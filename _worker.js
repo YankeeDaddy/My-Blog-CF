@@ -1,166 +1,115 @@
 /**
- * Cloudflare Pages Worker — handles API routes, static files passthrough
- * 
- * Routes:
- *   GET  /api/likes       → read likes.json from GitHub
- *   POST /api/likes       → write likes.json to GitHub (needs GITHUB_PAT env var)
- *   GET  /api/discussions → read comment counts from GitHub Discussions API
- *   *    /*               → serve static files (index.html, posts/, etc.)
+ * Cloudflare Pages Worker — API routes + static file passthrough
  */
-
-const OWNER = 'YankeeDaddy';
-const REPO  = 'My-Blog-CF';
-const BRANCH = 'main';
-
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
-
 export default {
-  async fetch(request, env, ctx) {
-    const url = new URL(request.url);
-    const path = url.pathname;
+  async fetch(request, env) {
+    try {
+      const url = new URL(request.url);
+      const path = url.pathname;
 
-    // --- API: likes ---
-    if (path === '/api/likes') {
-      if (request.method === 'OPTIONS') {
-        return new Response(null, { status: 204, headers: CORS });
+      // --- GET /api/likes ---
+      if (path === '/api/likes' && request.method === 'GET') {
+        const rawResp = await fetch(
+          'https://raw.githubusercontent.com/YankeeDaddy/My-Blog-CF/main/posts/likes.json',
+          { cf: { cacheTtl: 0 } }
+        );
+        const data = await rawResp.json();
+        return new Response(JSON.stringify(data), {
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' },
+        });
       }
-      if (request.method === 'GET') {
-        return handleGetLikes();
-      }
-      if (request.method === 'POST') {
-        return handlePostLikes(request, env);
-      }
-      return new Response('Method Not Allowed', { status: 405, headers: CORS });
-    }
 
-    // --- API: discussions ---
-    if (path === '/api/discussions') {
-      const commentsRepo = 'YankeeDaddy/My-Blog-Comments-CF';
-      const token = env.GITHUB_PAT;
-      const headers = {
-        'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'Cloudflare-Pages-Worker',
-      };
-      if (token) {
-        headers['Authorization'] = `token ${token}`;
+      // --- POST /api/likes ---
+      if (path === '/api/likes' && request.method === 'POST') {
+        const token = env.GITHUB_PAT;
+        if (!token) {
+          return new Response(JSON.stringify({ error: 'GITHUB_PAT missing' }), {
+            status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+        const body = await request.json();
+        const likes = body.likes;
+        if (!likes || typeof likes !== 'object') {
+          return new Response(JSON.stringify({ error: 'Invalid likes' }), {
+            status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+
+        const apiBase = 'https://api.github.com/repos/YankeeDaddy/My-Blog-CF/contents/posts/likes.json';
+        const auth = { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'CF-Pages' };
+
+        const getResp = await fetch(apiBase, { headers: auth });
+        let sha = null;
+        if (getResp.ok) {
+          const info = await getResp.json();
+          sha = info.sha;
+        } else if (getResp.status !== 404) {
+          throw new Error('GitHub GET ' + getResp.status);
+        }
+
+        const content = JSON.stringify(likes, null, 2) + '\n';
+        const putBody = { message: 'Update likes', content: btoa(unescape(encodeURIComponent(content))), branch: 'main' };
+        if (sha) putBody.sha = sha;
+
+        const putResp = await fetch(apiBase, {
+          method: 'PUT',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, auth),
+          body: JSON.stringify(putBody),
+        });
+
+        if (!putResp.ok) {
+          const txt = await putResp.text();
+          throw new Error('GitHub PUT ' + putResp.status + ': ' + txt.slice(0, 200));
+        }
+
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
       }
-      try {
+
+      // --- GET /api/discussions ---
+      if (path === '/api/discussions') {
+        const token = env.GITHUB_PAT;
+        const headers = { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'CF-Pages' };
+        if (token) headers['Authorization'] = 'token ' + token;
+
         const resp = await fetch(
-          `https://api.github.com/repos/${commentsRepo}/discussions?per_page=100&state=all`,
+          'https://api.github.com/repos/YankeeDaddy/My-Blog-Comments-CF/discussions?per_page=100&state=all',
           { headers }
         );
-        if (!resp.ok) throw new Error(`GitHub API returned ${resp.status}`);
+        if (!resp.ok) throw new Error('GitHub API ' + resp.status);
         const discussions = await resp.json();
-        if (!Array.isArray(discussions)) throw new Error('Unexpected response');
         const articles = {};
         let total = 0;
-        discussions.forEach(d => {
-          const match = d.title && d.title.match(/^#\/post\/(.+)$/);
-          if (match) {
-            articles[match[1]] = d.comments || 0;
-            total += (d.comments || 0);
-          }
+        (discussions || []).forEach(function(d) {
+          var m = d.title && d.title.match(/^#\/post\/(.+)$/);
+          if (m) { articles[m[1]] = d.comments || 0; total += d.comments || 0; }
         });
-        return new Response(JSON.stringify({ articles, total }), {
-          headers: { ...CORS, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
-        });
-      } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }), {
-          status: 502, headers: { ...CORS, 'Content-Type': 'application/json' },
+        return new Response(JSON.stringify({ articles: articles, total: total }), {
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' },
         });
       }
-    }
 
-    // --- Everything else: serve static files ---
-    return env.ASSETS.fetch(request);
+      // --- OPTIONS preflight ---
+      if (path.startsWith('/api/') && request.method === 'OPTIONS') {
+        return new Response(null, {
+          status: 204,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+          },
+        });
+      }
+
+      // --- Static files ---
+      return env.ASSETS.fetch(request);
+
+    } catch (e) {
+      return new Response(JSON.stringify({ error: 'Worker error: ' + (e.message || 'unknown') }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
   },
 };
-
-async function handleGetLikes() {
-  const rawUrl = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/posts/likes.json`;
-  try {
-    const resp = await fetch(rawUrl, { cf: { cacheTtl: 0 } });
-    if (!resp.ok) throw new Error(`GitHub raw returned ${resp.status}`);
-    const data = await resp.json();
-    return new Response(JSON.stringify(data), {
-      headers: { ...CORS, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
-    });
-  } catch (e) {
-    return new Response(JSON.stringify({ error: `Failed to fetch likes: ${e.message}` }), {
-      status: 502, headers: { ...CORS, 'Content-Type': 'application/json' },
-    });
-  }
-}
-
-async function handlePostLikes(request, env) {
-  const token = env.GITHUB_PAT;
-  if (!token) {
-    return new Response(JSON.stringify({ error: 'Server not configured: GITHUB_PAT missing' }), {
-      status: 500, headers: { ...CORS, 'Content-Type': 'application/json' },
-    });
-  }
-
-  let body;
-  try { body = await request.json(); } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
-      status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
-    });
-  }
-  const likesData = body.likes;
-  if (!likesData || typeof likesData !== 'object') {
-    return new Response(JSON.stringify({ error: 'Missing or invalid "likes" field' }), {
-      status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
-    });
-  }
-
-  const apiBase = `https://api.github.com/repos/${OWNER}/${REPO}/contents/posts/likes.json`;
-  const authHeaders = {
-    'Authorization': `token ${token}`,
-    'Accept': 'application/vnd.github.v3+json',
-    'User-Agent': 'Cloudflare-Pages-Worker',
-  };
-
-  try {
-    // Step 1: get current SHA
-    const getResp = await fetch(apiBase, { headers: authHeaders });
-    if (!getResp.ok && getResp.status !== 404) {
-      const txt = await getResp.text();
-      throw new Error(`GitHub GET returned ${getResp.status}: ${txt.slice(0, 200)}`);
-    }
-    const fileInfo = getResp.status === 404 ? null : await getResp.json();
-
-    // Step 2: PUT updated content
-    const content = JSON.stringify(likesData, null, 2) + '\n';
-    const putBody = {
-      message: '\uD83D\uDC4D Update likes [via API]',
-      content: btoa(unescape(encodeURIComponent(content))),
-      branch: BRANCH,
-    };
-    if (fileInfo && fileInfo.sha) {
-      putBody.sha = fileInfo.sha;
-    }
-
-    const putResp = await fetch(apiBase, {
-      method: 'PUT',
-      headers: { ...authHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify(putBody),
-    });
-
-    if (!putResp.ok) {
-      const txt = await putResp.text();
-      throw new Error(`GitHub PUT returned ${putResp.status}: ${txt.slice(0, 200)}`);
-    }
-
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { ...CORS, 'Content-Type': 'application/json' },
-    });
-  } catch (e) {
-    return new Response(JSON.stringify({ error: e.message }), {
-      status: 500, headers: { ...CORS, 'Content-Type': 'application/json' },
-    });
-  }
-}
