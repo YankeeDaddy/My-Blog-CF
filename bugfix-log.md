@@ -153,7 +153,7 @@ curl https://peyblog-likes-api.peyw.workers.dev/api/likes
 
 ### 2. 验证 Worker `/api/discussions` (GET)
 ```bash
-curl https://peyblog-likes-api.peyw.workers.dev/api/discussions
+curl https://api.peyblog.com/api/discussions
 ```
 期望：返回扁平格式 JSON，key 为 slug（无 `#/post/` 前缀）
 
@@ -161,6 +161,24 @@ curl https://peyblog-likes-api.peyw.workers.dev/api/discussions
 1. 设备 A：打开 `https://peyblog.com`，点击某篇文章的点赞按钮
 2. 设备 B（或无痕模式）：打开同一篇文章，点赞数应已更新
 3. 检查 `https://raw.githubusercontent.com/YankeeDaddy/My-Blog-CF/main/posts/likes.json` 是否已更新
+
+---
+
+## 追加修复 — 自定义域名绑定
+
+**日期**：2026-06-05 01:43
+
+**原因**：`*.workers.dev` 在国内 DNS 污染，浏览器无法访问。
+
+**操作**：
+1. 在 Cloudflare Dashboard 为 Worker `peyblog-likes-api` 绑定自定义域名 `api.peyblog.com`
+2. 修改 `index.html` 第 1348 行：`API_BASE` 从 `https://peyblog-likes-api.peyw.workers.dev` 改为 `https://api.peyblog.com`
+3. 提交：`修改 API_BASE 为自定义域名 api.peyblog.com`（commit `b4a43df`，推送待网络恢复）
+
+**验证结果**（2026-06-05 01:43）：
+- [ ] 待验证 `https://api.peyblog.com/api/likes` 可访问
+- [ ] 待验证 `https://api.peyblog.com/api/discussions` 可访问
+- [ ] 待验证跨设备点赞持久化
 
 ---
 
