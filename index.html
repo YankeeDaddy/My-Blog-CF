@@ -1114,8 +1114,9 @@ async function fetchArticleCommentCounts() {
         const resp = await fetch(`${API_BASE}/api/discussions`, { cache: 'no-store' });
         if (resp.ok) {
             const data = await resp.json();
-            articleCommentCounts = data.articles || {};
-            totalCommentCount = data.total || 0;
+            // Worker returns flat format: { slug: count, ... }
+            articleCommentCounts = data || {};
+            totalCommentCount = Object.values(articleCommentCounts).reduce((s, v) => s + (v || 0), 0);
             const statEl = document.getElementById('commentCountStat');
             if (statEl) statEl.textContent = totalCommentCount;
             commentCountsLoaded = true;
