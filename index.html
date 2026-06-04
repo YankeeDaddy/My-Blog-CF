@@ -781,7 +781,7 @@ async function loadLikesRemote() {
 
     // Primary: Functions API (server-side, always fresh, no cache)
     try {
-        const resp = await fetch('/api/likes', { cache: 'no-store' });
+        const resp = await fetch(`${API_BASE}/api/likes`, { cache: 'no-store' });
         if (resp.ok) {
             likesData = await resp.json();
             likesLoaded = loaded = true;
@@ -841,7 +841,7 @@ async function syncLikesToGithub() {
     likesSyncing = true;
     try {
         // Primary: Functions API (server-side PAT, works for all visitors)
-        const resp = await fetch('/api/likes', {
+        const resp = await fetch(`${API_BASE}/api/likes`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ likes: likesData }),
@@ -1111,7 +1111,7 @@ async function fetchArticleCommentCounts() {
     if (commentCountsLoaded) return articleCommentCounts;
     try {
         // Primary: Functions API (uses server-side PAT, 5000 req/hr)
-        const resp = await fetch('/api/discussions', { cache: 'no-store' });
+        const resp = await fetch(`${API_BASE}/api/discussions`, { cache: 'no-store' });
         if (resp.ok) {
             const data = await resp.json();
             articleCommentCounts = data.articles || {};
@@ -1342,6 +1342,9 @@ function observeHeadings(headings) {
 // GISCUS COMMENTS
 // ================================================================
 const MAIN_REPO = 'YankeeDaddy/My-Blog-CF';
+
+// Worker API URL - Used for cross-device data persistence
+const API_BASE = 'https://peyblog-likes-api.peyw.workers.dev';
 const GISCUS_CONFIG = {
     repo: 'YankeeDaddy/My-Blog-Comments-CF',
     repoId: 'R_kgDOSwil2A',
