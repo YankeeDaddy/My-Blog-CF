@@ -775,12 +775,23 @@ let likesData = {};  // in-memory likes cache: { slug: count }
 let likesLoaded = false;
 let likesSyncing = false;
 
-/** Load likes from GitHub raw content (bypasses CDN cache, always fresh across devices) */
+/** Load likes from Functions API (bypasses CDN cache, always fresh across devices) */
 async function loadLikesRemote() {
-    // GitHub raw content URL — always fresh, bypasses CF Pages static cache
-    const RAW_URL = `https://raw.githubusercontent.com/${MAIN_REPO}/main/${LIKES_JSON_PATH}`;
     let loaded = false;
 
+    // Primary: Functions API (server-side, always fresh, no cache)
+    try {
+        const resp = await fetch('/api/likes', { cache: 'no-store' });
+        if (resp.ok) {
+            likesData = await resp.json();
+            likesLoaded = loaded = true;
+            localStorage.setItem(LIKE_STORAGE_KEY, JSON.stringify(likesData));
+            return likesData;
+        }
+    } catch(e) { /* Functions not available yet, fallback */ }
+
+    // Fallback: GitHub raw content (may have short cache)
+    const RAW_URL = `https://raw.githubusercontent.com/${MAIN_REPO}/main/${LIKES_JSON_PATH}`;
     try {
         const resp = await fetch(RAW_URL + '?t=' + Date.now(), { cache: 'no-store' });
         if (resp.ok) {
@@ -823,11 +834,23 @@ async function loadLikesRemote() {
     return likesData;
 }
 
-/** Sync likes to GitHub (push likes.json). Requires admin/GitHub config. */
+/** Sync likes via Functions API (server-side PAT, no user config needed).
+ *  Falls back to direct GitHub API if the user has manually configured a PAT. */
 async function syncLikesToGithub() {
     if (likesSyncing) return;
     likesSyncing = true;
     try {
+        // Primary: Functions API (server-side PAT, works for all visitors)
+        const resp = await fetch('/api/likes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ likes: likesData }),
+        });
+        if (resp.ok) {
+            console.log('Likes synced via Functions API');
+            return;
+        }
+        // Fallback: direct GitHub API (requires user PAT in localStorage)
         if (!isGithubConnected()) return;
         const content = JSON.stringify(likesData, null, 2) + '\n';
         await githubPushFile(LIKES_JSON_PATH, content, '👍 更新点赞数据');
@@ -1079,7 +1102,7 @@ async function renderHome() {
     document.getElementById('view-home').style.display = 'block';
 }
 
-/** Fetch per-article comment counts + total from Giscus Discussions repo (GitHub API, single request) */
+/** Fetch per-article comment counts + total — primary: Functions API (auth'd, no rate limit) */
 let articleCommentCounts = {};
 let totalCommentCount = 0;
 let commentCountsLoaded = false;
@@ -1087,21 +1110,35 @@ let commentCountsLoaded = false;
 async function fetchArticleCommentCounts() {
     if (commentCountsLoaded) return articleCommentCounts;
     try {
+        // Primary: Functions API (uses server-side PAT, 5000 req/hr)
+        const resp = await fetch('/api/discussions', { cache: 'no-store' });
+        if (resp.ok) {
+            const data = await resp.json();
+            articleCommentCounts = data.articles || {};
+            totalCommentCount = data.total || 0;
+            const statEl = document.getElementById('commentCountStat');
+            if (statEl) statEl.textContent = totalCommentCount;
+            commentCountsLoaded = true;
+            return articleCommentCounts;
+        }
+    } catch(e) { /* Functions not available yet, fallback */ }
+
+    // Fallback: direct GitHub API (anonymous, 60 req/hr limit)
+    try {
         const resp = await fetch(`https://api.github.com/repos/${GISCUS_CONFIG.repo}/discussions?per_page=100&state=all`);
         if (!resp.ok) throw new Error('API error');
         const discussions = await resp.json();
         if (!Array.isArray(discussions)) return {};
         let total = 0;
         discussions.forEach(d => {
-            // Extract slug from discussion title: "#/post/about-this-blog" → "about-this-blog"
             const match = d.title && d.title.match(/^#\/post\/(.+)$/);
             if (match) {
                 articleCommentCounts[match[1]] = d.comments || 0;
                 total += (d.comments || 0);
             }
         });
+        articleCommentCounts = articleCommentCounts;
         totalCommentCount = total;
-        // Update hero stat if visible
         const statEl = document.getElementById('commentCountStat');
         if (statEl) statEl.textContent = total;
     } catch(e) {

@@ -34,6 +34,22 @@
 
 每次向 `main` 分支推送，Cloudflare Pages 会自动触发重新部署。
 
+### 二、配置点赞持久化（必须）
+
+为了让点赞数据跨设备可见，需要配置服务端 GitHub PAT：
+
+1. 访问 [GitHub Token 生成页](https://github.com/settings/tokens/new?scopes=repo&description=PeyBlog-Likes-API)，创建一个 **classic PAT**，勾选 `repo` 权限，生成并复制 Token
+2. 进入 Cloudflare Dashboard → **Workers & Pages** → `My-Blog-CF` → **Settings** → **Environment variables**
+3. 添加环境变量：
+
+   | 变量名 | 值 | 加密 |
+   |--------|-----|------|
+   | `GITHUB_PAT` | 粘贴你的 Token | ✅ 勾选 Encrypt |
+
+4. 点击 **Save**，等待重新部署完成
+
+> 原理：Frontend → `POST /api/likes` → Pages Functions → 用服务端 PAT 写入 `My-Blog-CF/posts/likes.json`。访客无需配置任何内容。
+
 ---
 
 ## 配置评论系统（Giscus）
