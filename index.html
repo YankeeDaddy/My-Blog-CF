@@ -1,0 +1,1942 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PeyBlog | 简约之美</title>
+    <meta name="description" content="一个简约、优雅的个人博客，记录技术、设计与思考。">
+    <!-- Marked.js — Markdown to HTML renderer -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        /* ================================================================
+           CSS RESET & DESIGN TOKENS
+           ================================================================ */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-card: #ffffff;
+            --text: #1e293b;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --border: #e2e8f0;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+            --shadow: 0 4px 12px rgba(0,0,0,0.08);
+            --shadow-lg: 0 10px 30px rgba(0,0,0,0.1);
+            --radius: 12px;
+            --radius-sm: 6px;
+            --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-serif: Georgia, 'Times New Roman', serif;
+            --transition: 0.25s ease;
+            --max-width: 1100px;
+            --header-h: 64px;
+        }
+        [data-theme="dark"] {
+            --primary: #3b82f6;
+            --primary-hover: #60a5fa;
+            --bg: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: #1e293b;
+            --text: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: #334155;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow: 0 4px 12px rgba(0,0,0,0.35);
+            --shadow-lg: 0 10px 30px rgba(0,0,0,0.45);
+        }
+
+        /* ================================================================
+           BASE & LAYOUT
+           ================================================================ */
+        html { scroll-behavior: smooth; font-size: 16px; -webkit-font-smoothing: antialiased; }
+        body { font-family: var(--font-sans); background: var(--bg); color: var(--text); line-height: 1.7; min-height: 100vh; transition: background var(--transition), color var(--transition); }
+        a { color: var(--primary); text-decoration: none; transition: color var(--transition); }
+        a:hover { color: var(--primary-hover); }
+        .container { max-width: var(--max-width); margin: 0 auto; padding: 0 24px; }
+        ::selection { background: var(--primary); color: white; }
+
+        /* Reading Progress Bar */
+        .reading-progress { position: fixed; top: 0; left: 0; height: 3px; background: linear-gradient(90deg, var(--primary), #60a5fa); z-index: 9999; width: 0; transition: width 0.05s linear; }
+
+        /* Header */
+        .site-header { position: sticky; top: 0; z-index: 100; background: var(--bg); border-bottom: 1px solid var(--border); backdrop-filter: blur(12px); background: rgba(var(--bg-rgb,255,255,255),0.85); height: var(--header-h); display: flex; align-items: center; transition: all var(--transition); }
+        [data-theme="dark"] .site-header { background: rgba(15,23,42,0.9); }
+        .header-inner { display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: var(--max-width); margin: 0 auto; padding: 0 24px; }
+        .logo { font-family: var(--font-serif); font-size: 1.35rem; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
+        .logo span { color: var(--primary); }
+        .nav-links { display: flex; gap: 28px; list-style: none; align-items: center; }
+        .nav-links a { color: var(--text-secondary); font-size: 0.92rem; font-weight: 500; position: relative; padding: 4px 0; transition: color var(--transition); }
+        .nav-links a::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 0; height: 2px; background: var(--primary); border-radius: 1px; transition: width var(--transition); }
+        .nav-links a:hover, .nav-links a.active { color: var(--primary); }
+        .nav-links a.active::after { width: 100%; }
+        .header-right { display: flex; align-items: center; gap: 12px; }
+
+        /* Theme Toggle */
+        .theme-toggle { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg-secondary); cursor: pointer; font-size: 1.05rem; display: flex; align-items: center; justify-content: center; transition: all var(--transition); }
+        .theme-toggle:hover { border-color: var(--primary); transform: rotate(15deg); }
+
+        /* Mobile menu */
+        .mobile-menu-btn { display: none; background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text); padding: 4px; }
+        .mobile-nav { position: fixed; top: var(--header-h); left: 0; right: 0; bottom: 0; background: var(--bg); z-index: 99; padding: 24px; transform: translateX(-105%); transition: transform 0.3s ease; overflow-y: auto; }
+        .mobile-nav.open { transform: translateX(0); }
+        .mobile-nav nav a { display: block; padding: 14px 0; font-size: 1.1rem; border-bottom: 1px solid var(--border); color: var(--text); }
+        .mobile-nav-close { position: absolute; top: 16px; right: 20px; background: none; border: none; font-size: 1.6rem; cursor: pointer; color: var(--text); }
+
+        /* Hero Section */
+        .hero-section { text-align: center; padding: 56px 0 44px; }
+        .hero-banner {
+            padding: 40px 32px 32px;
+            border-radius: var(--radius);
+            background: linear-gradient(135deg, rgba(37,99,235,0.04) 0%, rgba(96,165,250,0.06) 50%, rgba(147,197,253,0.04) 100%);
+            border: 1px solid rgba(37,99,235,0.08);
+        }
+        [data-theme="dark"] .hero-banner {
+            background: linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(96,165,250,0.06) 50%, rgba(147,197,253,0.04) 100%);
+            border-color: rgba(59,130,246,0.12);
+        }
+        .hero-title { font-family: var(--font-serif); font-size: 2.6rem; font-weight: 700; line-height: 1.25; margin-bottom: 12px; letter-spacing: -0.03em; }
+        .hero-subtitle { color: var(--text-secondary); font-size: 1.08rem; margin-bottom: 32px; }
+        .hero-stats { display: flex; justify-content: center; gap: 40px; }
+        .hero-stat { text-align: center; }
+        .hero-stat .num { font-size: 2rem; font-weight: 700; color: var(--primary); }
+        .hero-stat .label { font-size: 0.84rem; color: var(--text-muted); margin-top: 2px; }
+
+        /* Search Bar */
+        .search-bar { max-width: 480px; margin: 0 auto 36px; position: relative; }
+        .search-input { width: 100%; padding: 12px 40px 12px 18px; border: 1.5px solid var(--border); border-radius: 50px; background: var(--bg-secondary); color: var(--text); font-size: 0.92rem; outline: none; transition: all var(--transition); font-family: inherit; }
+        .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+        .search-clear { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 1.1rem; display: none; padding: 4px; }
+        .search-clear:hover { color: var(--text); }
+
+        /* Filter Tags */
+        .filter-tags-row { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-bottom: 36px; }
+        .filter-tag { padding: 5px 15px; border-radius: 50px; font-size: 0.83rem; background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-secondary); cursor: pointer; transition: all var(--transition); user-select: none; }
+        .filter-tag:hover { border-color: var(--primary); color: var(--primary); }
+        .filter-tag.active { background: var(--primary); border-color: var(--primary); color: white; }
+
+        /* Main Layout */
+        .main-layout { display: grid; grid-template-columns: 1fr 280px; gap: 36px; padding-bottom: 48px; align-items: start; }
+
+        /* Article Card */
+        .article-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 26px; cursor: pointer; transition: all var(--transition); position: relative; margin-bottom: 20px; }
+        .article-card:hover { border-color: var(--primary); box-shadow: var(--shadow); transform: translateY(-2px); }
+        .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .card-meta { display: flex; align-items: center; gap: 10px; font-size: 0.82rem; color: var(--text-muted); }
+        .card-tag { padding: 2px 10px; border-radius: 50px; background: rgba(37,99,235,0.09); color: var(--primary); font-size: 0.78rem; font-weight: 500; }
+        .card-actions { display: flex; gap: 4px; }
+        .card-action-btn { width: 30px; height: 30px; border: none; background: transparent; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.82rem; color: var(--text-muted); transition: all var(--transition); display: flex; align-items: center; justify-content: center; }
+        .card-action-btn:hover { background: var(--bg-secondary); color: var(--text); }
+        .card-action-btn.delete:hover { background: #fef2f2; color: #ef4444; }
+        [data-theme="dark"] .card-action-btn.delete:hover { background: rgba(239,68,68,0.12); }
+        .article-card h2 { font-size: 1.25rem; font-weight: 600; line-height: 1.4; margin-bottom: 8px; font-family: var(--font-sans); }
+        .article-card h2:hover { color: var(--primary); }
+        .card-excerpt { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.65; margin-bottom: 14px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+        .card-footer { display: flex; justify-content: space-between; align-items: center; }
+        .card-comment-count { font-size: 0.82rem; color: var(--text-muted); }
+
+        /* Pagination */
+        .pagination { display: flex; justify-content: center; gap: 6px; margin-top: 32px; flex-wrap: wrap; }
+        .page-btn { padding: 7px 13px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text); border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem; transition: all var(--transition); font-family: inherit; min-width: 38px; text-align: center; }
+        .page-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+        .page-btn.active { background: var(--primary); border-color: var(--primary); color: white; }
+        .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Sidebar */
+        .sidebar { position: sticky; top: calc(var(--header-h) + 20px); }
+        .widget { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; margin-bottom: 20px; }
+        .widget-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 16px; color: var(--text); display: flex; align-items: center; gap: 8px; }
+        .cat-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--border); cursor: pointer; transition: color var(--transition); font-size: 0.88rem; }
+        .cat-item:last-child { border: none; }
+        .cat-item:hover .cat-name { color: var(--primary); }
+        .cat-name { color: var(--text-secondary); }
+        .cat-count { font-size: 0.78rem; color: var(--text-muted); background: var(--bg-secondary); padding: 1px 9px; border-radius: 50px; }
+        .tag-cloud-item { display: inline-block; padding: 4px 11px; margin: 3px; border-radius: 50px; background: var(--bg-secondary); border: 1px solid var(--border); font-size: 0.79rem; color: var(--text-secondary); cursor: pointer; transition: all var(--transition); }
+        .tag-cloud-item:hover { border-color: var(--primary); color: var(--primary); }
+
+        /* Detail Page */
+        .detail-page { max-width: 780px; margin: 0 auto; }
+        .detail-header { margin-bottom: 32px; }
+        .detail-page h1 { font-family: var(--font-serif); font-size: 2rem; font-weight: 700; line-height: 1.35; margin-bottom: 14px; letter-spacing: -0.02em; }
+        .detail-info-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 0.86rem; color: var(--text-muted); }
+        .detail-body { color: var(--text-secondary); line-height: 1.85; font-size: 0.96rem; }
+        .detail-body h2 { font-size: 1.45rem; color: var(--text); margin: 36px 0 14px; font-weight: 600; font-family: var(--font-sans); }
+        .detail-body h3 { font-size: 1.18rem; color: var(--text); margin: 28px 0 12px; font-weight: 600; }
+        .detail-body p { margin-bottom: 1.25em; }
+        .detail-body strong { color: var(--text); font-weight: 600; }
+        .detail-body code { background: var(--bg-secondary); padding: 2px 7px; border-radius: 4px; font-size: 0.88em; color: var(--primary); font-family: 'Cascadia Code', 'Fira Code', monospace; }
+        .detail-body pre { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; overflow-x: auto; margin-bottom: 1.5em; }
+        .detail-body pre code { background: none; padding: 0; font-size: 0.87em; color: var(--text); line-height: 1.65; display: block; }
+        .detail-body blockquote { border-left: 4px solid var(--primary); margin: 1.5em 0; padding: 12px 20px; background: var(--bg-secondary); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; color: var(--text-secondary); }
+        .detail-body ul, .detail-body ol { padding-left: 1.5em; margin-bottom: 1.25em; }
+        .detail-body li { margin-bottom: 0.4em; }
+        .detail-body a { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+        .detail-body img { max-width: 100%; border-radius: var(--radius-sm); margin: 1em 0; }
+        .detail-body hr { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
+        .detail-body table { width: 100%; border-collapse: collapse; margin-bottom: 1.5em; }
+        .detail-body th, .detail-body td { padding: 10px 14px; border: 1px solid var(--border); text-align: left; font-size: 0.9rem; }
+        .detail-body th { background: var(--bg-secondary); font-weight: 600; color: var(--text); }
+
+        /* TOC */
+        .toc-widget { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; }
+        .toc-list { list-style: none; }
+        .toc-item { padding: 6px 0 6px 14px; font-size: 0.85rem; color: var(--text-secondary); cursor: pointer; position: relative; transition: all var(--transition); border-left: 2px solid transparent; }
+        .toc-item::before { content:''; position:absolute; left:0; top:50%; transform:translateY(-50%); width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:5px solid var(--text-muted); transition:all var(--transition); }
+        .toc-item:hover, .toc-item.active { color: var(--primary); border-left-color: var(--primary); }
+        .toc-item:hover::before, .toc-item.active::before { border-top-color: var(--primary); }
+
+        /* Like Button */
+        .article-like-bar { display: flex; align-items: center; gap: 14px; margin: 36px 0; padding: 18px 24px; background: var(--bg-secondary); border-radius: var(--radius); border: 1px solid var(--border); }
+        .like-btn { padding: 10px 22px; border: 1.5px solid var(--border); border-radius: 50px; background: var(--bg-card); cursor: pointer; font-size: 0.92rem; color: var(--text-secondary); transition: all var(--transition); font-family: inherit; display: flex; align-items: center; gap: 6px; }
+        .like-btn:hover { border-color: #fa5151; color: #fa5151; }
+        .like-btn.liked { border-color: #fa5151; background: #fff5f5; color: #fa5151; }
+        [data-theme="dark"] .like-btn.liked { background: rgba(250,81,81,0.12); }
+        .like-count { font-size: 0.88rem; color: var(--text-muted); }
+        .heart-icon { color: #fa5151; font-size: 1em; }
+        .heart-icon-empty { color: #9ca3af; font-size: 1em; }
+
+        /* Editor Page */
+        .editor-form { max-width: 800px; margin: 0 auto; }
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; font-size: 0.9rem; font-weight: 600; margin-bottom: 7px; color: var(--text); }
+        .form-help { font-weight: 400; color: var(--text-muted); font-size: 0.82rem; }
+        .form-input, .form-select, .form-textarea { width: 100%; padding: 11px 15px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-card); color: var(--text); font-size: 0.92rem; outline: none; transition: border-color var(--transition); font-family: inherit; }
+        .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        .form-textarea { resize: vertical; min-height: 320px; line-height: 1.7; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-actions { display: flex; gap: 12px; margin-top: 28px; }
+
+        /* Buttons */
+        .btn-primary { padding: 11px 26px; border: none; border-radius: var(--radius-sm); background: var(--primary); color: white; font-size: 0.92rem; font-weight: 500; cursor: pointer; transition: all var(--transition); font-family: inherit; }
+        .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+        .btn-secondary { padding: 11px 26px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: transparent; color: var(--text-secondary); font-size: 0.92rem; cursor: pointer; transition: all var(--transition); font-family: inherit; }
+        .btn-secondary:hover { border-color: var(--text-muted); color: var(--text); }
+
+        /* Toolbar */
+        .editor-toolbar { display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }
+        .toolbar-btn { width: 34px; height: 34px; border: 1px solid var(--border); background: var(--bg-card); border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem; color: var(--text-secondary); transition: all var(--transition); display: flex; align-items: center; justify-content: center; font-family: inherit; }
+        .toolbar-btn:hover { border-color: var(--primary); color: var(--primary); background: rgba(37,99,235,0.04); }
+
+        /* Markdown Split Editor */
+        .editor-split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+        .md-editor-pane { display: flex; flex-direction: column; }
+        .preview-header { padding: 8px 16px; background: var(--bg-secondary); border-bottom: 1px solid var(--border); font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .md-editor { width: 100%; min-height: 400px; padding: 16px; border: none; background: var(--bg-card); color: var(--text); font-size: 0.91rem; line-height: 1.75; resize: vertical; font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; outline: none; tab-size: 2; }
+        .md-preview { width: 100%; min-height: 400px; padding: 16px; overflow-y: auto; background: var(--bg-card); color: var(--text-secondary); line-height: 1.85; font-size: 0.95rem; word-break: break-word; }
+        .md-preview p { margin-bottom: 1em; }
+        .md-preview h2 { font-size: 1.4rem; color: var(--text); margin: 28px 0 12px; font-weight: 600; }
+        .md-preview h3 { font-size: 1.15rem; color: var(--text); margin: 22px 0 10px; font-weight: 600; }
+        .md-preview code { background: var(--bg-secondary); padding: 2px 6px; border-radius: 4px; font-size: 0.87em; color: var(--primary); font-family: 'Cascadia Code', monospace; }
+        .md-preview pre { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; overflow-x: auto; margin: 1em 0; }
+        .md-preview pre code { background: none; padding: 0; color: var(--text); }
+        .md-preview blockquote { border-left: 3px solid var(--primary); margin: 1em 0; padding: 10px 16px; background: var(--bg-secondary); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; color: var(--text-secondary); }
+        .md-preview ul, .md-preview ol { padding-left: 1.5em; margin-bottom: 1em; }
+        .md-preview strong { color: var(--text); font-weight: 600; }
+        .md-preview a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+        .md-preview table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+        .md-preview th, .md-preview td { padding: 8px 12px; border: 1px solid var(--border); font-size: 0.88rem; }
+        .md-preview th { background: var(--bg-secondary); font-weight: 600; }
+        .md-preview hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
+        .md-preview img { max-width: 100%; border-radius: var(--radius-sm); }
+
+        /* About Page */
+        .about-page { max-width: 700px; margin: 0 auto; }
+        .about-hero { text-align: center; padding: 32px 0 36px; }
+        .about-avatar { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), #60a5fa); color: white; font-size: 2rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+        .about-hero h1 { font-family: var(--font-serif); font-size: 1.6rem; margin-bottom: 6px; }
+        .about-hero > p { color: var(--text-secondary); }
+        .about-section { margin-bottom: 32px; }
+        .about-section h2 { font-size: 1.15rem; margin-bottom: 14px; color: var(--text); }
+        .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .about-card { padding: 16px; background: var(--bg-secondary); border-radius: var(--radius-sm); border: 1px solid var(--border); }
+        .about-card-label { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 4px; }
+        .about-card-value { font-size: 0.92rem; color: var(--text); font-weight: 500; }
+
+        /* Giscus */
+        .giscus-wrapper { margin-top: 40px; }
+        .giscus-header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+        .giscus-title { font-size: 1.1rem; font-weight: 600; }
+        .giscus-loading { text-align: center; padding: 40px 0; color: var(--text-muted); }
+
+        /* GitHub Config Panel */
+        .gh-config-panel { max-width: 520px; margin: 0 auto 32px; padding: 24px; background: var(--bg-secondary); border: 1.5px solid var(--border); border-radius: var(--radius); }
+        .gh-config-panel h3 { font-size: 1rem; margin-bottom: 16px; color: var(--text); }
+        .gh-config-panel label { display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px; }
+        .gh-config-panel input { width: 100%; padding: 9px 13px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-card); color: var(--text); font-size: 0.88rem; outline: none; margin-bottom: 12px; font-family: inherit; }
+        .gh-config-panel input:focus { border-color: var(--primary); }
+        .gh-config-actions { display: flex; gap: 10px; margin-top: 16px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .status-dot.connected { background: #22c55e; }
+        .status-dot.disconnected { background: #ef4444; }
+
+        /* Empty State */
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+        .empty-state .icon { font-size: 3rem; margin-bottom: 14px; }
+        .empty-state h3 { margin-bottom: 8px; color: var(--text-secondary); }
+        .empty-state p { font-size: 0.9rem; }
+
+        /* Toast */
+        .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px); padding: 12px 26px; background: var(--text); color: var(--bg); border-radius: 50px; font-size: 0.88rem; z-index: 9999; opacity: 0; transition: all 0.3s ease; pointer-events: none; white-space: nowrap; }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast.success { background: #22c55e; color: white; }
+        .toast.error { background: #ef4444; color: white; }
+
+        /* Modal */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        .modal-overlay.show { display: flex; }
+        .modal-box { background: var(--bg-card); padding: 32px; border-radius: var(--radius); max-width: 400px; width: 90%; text-align: center; box-shadow: var(--shadow-lg); }
+        .modal-box h3 { margin-bottom: 12px; font-size: 1.1rem; }
+        .modal-box p { color: var(--text-secondary); margin-bottom: 22px; font-size: 0.93rem; line-height: 1.6; }
+        .modal-actions { display: flex; gap: 12px; justify-content: center; }
+
+        /* Back to Top */
+        .back-to-top { position: fixed; bottom: 28px; right: 28px; width: 42px; height: 42px; border-radius: 50%; background: var(--primary); color: white; border: none; cursor: pointer; font-size: 1.15rem; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow); opacity: 0; transform: translateY(12px); transition: all var(--transition); z-index: 98; }
+        .back-to-top.visible { opacity: 1; transform: translateY(0); }
+        .back-to-top:hover { background: var(--primary-hover); transform: translateY(-2px); }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .main-layout { grid-template-columns: 1fr; }
+            .sidebar { position: static; order: -1; display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 12px; }
+            .sidebar .widget { margin-bottom: 0; }
+        }
+        @media (max-width: 720px) {
+            .nav-links { display: none; }
+            .mobile-menu-btn { display: block; }
+            .hero-title { font-size: 1.8rem; }
+            .hero-stats { gap: 24px; }
+            .hero-stat .num { font-size: 1.5rem; }
+            .form-row { grid-template-columns: 1fr; }
+            .editor-split { grid-template-columns: 1fr; }
+            .md-preview { border-top: 1px solid var(--border); }
+            .about-grid { grid-template-columns: 1fr; }
+            .detail-page h1 { font-size: 1.55rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="reading-progress" id="progressBar"></div>
+
+<!-- ===== HEADER ===== -->
+<header class="site-header">
+    <div class="header-inner">
+        <a class="logo" href="#/" onclick="navigateTo('home');return false;">Pey<span>Blog</span></a>
+        <ul class="nav-links" id="desktopNav">
+            <li><a href="#/" id="nav-home" onclick="navigateTo('home');return false;">首页</a></li>
+            <li><a href="#/about" id="nav-about" onclick="navigateTo('about');return false;">关于</a></li>
+            <li id="navEditorLi"><a href="#/editor" id="nav-editor" onclick="navigateTo('editor');return false;" class="admin-only">✏️ 写文章</a></li>
+        </ul>
+        <div class="header-right">
+            <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+        </div>
+    </div>
+</header>
+
+<!-- Mobile Nav -->
+<nav class="mobile-nav" id="mobileMenu">
+    <button class="mobile-nav-close" onclick="closeMobileMenu()">✕</button>
+    <nav>
+        <a href="#/" onclick="closeMobileMenu();navigateTo('home');return false;">🏠 首页</a>
+        <a href="#/about" onclick="closeMobileMenu();navigateTo('about');return false;">👤 关于</a>
+        <a href="#/editor" class="admin-only" onclick="closeMobileMenu();if(ADMIN_MODE){navigateTo('editor')};return false;">✏️ 写文章</a>
+        <button class="btn-secondary admin-only" style="margin-top:16px;width:100%;" onclick="closeMobileMenu();showGithubConfig()">⚙️ GitHub 设置</button>
+        <button id="mobileThemeBtn" style="margin-top:12px;width:100%;" class="btn-secondary" onclick="toggleTheme()">🌙 切换暗色模式</button>
+    </nav>
+</nav>
+
+<!-- ===== HOME VIEW ===== -->
+<main id="view-home" class="container">
+    <section class="hero-section">
+        <div class="hero-banner">
+            <h1 class="hero-title">思考 · 记录 · 分享</h1>
+            <p class="hero-subtitle">一个关于技术、设计与生活的个人空间</p>
+            <div class="hero-stats" id="heroStats"></div>
+        </div>
+    </section>
+
+    <div class="search-bar">
+        <input type="text" class="search-input" id="searchInput" placeholder="搜索文章..." oninput="onSearch(this.value)" autocomplete="off">
+        <button class="search-clear" id="searchClear" onclick="clearSearch()">✕</button>
+    </div>
+
+    <div class="filter-tags-row" id="filterTags"></div>
+
+    <div class="main-layout">
+        <div>
+            <div id="articlesContainer"></div>
+            <div class="pagination" id="pagination"></div>
+        </div>
+        <aside class="sidebar">
+            <div class="widget">
+                <div class="widget-title">📂 分类</div>
+                <ul id="categoryList" style="list-style:none;"></ul>
+            </div>
+            <div class="widget">
+                <div class="widget-title">🏷️ 标签云</div>
+                <div id="tagCloud"></div>
+            </div>
+            <div class="widget">
+                <div class="widget-title">📌 最近文章</div>
+                <ul id="recentList" style="list-style:none;"></ul>
+            </div>
+            <div class="widget admin-only">
+                <div class="widget-title">⚙️ GitHub 同步</div>
+                <p style="font-size:0.84rem;color:var(--text-muted);margin-bottom:8px;">
+                    <span class="status-dot" id="ghStatusDot"></span>
+                    <span id="ghStatusText">未连接</span>
+                </p>
+                <button class="btn-secondary" style="width:100%;padding:8px;font-size:0.84rem;" onclick="showGithubConfig()">配置 Token</button>
+            </div>
+        </aside>
+    </div>
+</main>
+
+<!-- ===== DETAIL VIEW ===== -->
+<section id="view-detail" style="display:none;padding:40px 24px;">
+    <div class="detail-page" id="detailPage"></div>
+    <div class="toc-widget" id="tocWidget" style="display:none;margin:24px auto 0;max-width:780px;">
+        <div class="widget-title">📑 目录</div>
+        <ol class="toc-list" id="tocList"></ol>
+    </div>
+    <!-- Persistent Giscus container (outside detailPage so it survives innerHTML rebuilds) -->
+    <div id="giscusContainer" style="display:none;max-width:780px;margin:32px auto 0;">
+        <div class="widget-title" style="margin-bottom:16px;">💬 评论</div>
+        <div id="giscusLoading" style="text-align:center;padding:40px 0;color:var(--text-muted);">
+            <div class="icon">💬</div>
+            <p>正在加载评论...</p>
+        </div>
+        <div id="giscusTarget" style="display:none;"></div>
+    </div>
+</section>
+
+<!-- ===== EDITOR VIEW ===== -->
+<section id="view-editor" style="display:none;padding:40px 24px;">
+    <div id="editorPage"></div>
+</section>
+
+<!-- ===== ABOUT VIEW ===== -->
+<section id="view-about" style="display:none;padding:40px 24px;">
+    <div class="about-page" id="aboutPage"></div>
+</section>
+
+<!-- ===== MODAL ===== -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal-box">
+        <h3 id="modalTitle">确认操作</h3>
+        <p id="modalMsg">确定要执行此操作吗？</p>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal()">取消</button>
+            <button class="btn-primary" id="modalConfirm">确定</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Back to Top -->
+<button class="back-to-top" id="backToTop" onclick="scrollToTop()">↑</button>
+
+<script>
+// ================================================================
+// 管理模式检测
+// ================================================================
+const ADMIN_MODE = new URLSearchParams(window.location.search).get('edit') === '1';
+
+function applyAdminMode() {
+    document.querySelectorAll('.admin-only').forEach(el => {
+        el.style.display = ADMIN_MODE ? '' : 'none';
+    });
+}
+
+// ================================================================
+// DATA LAYER — Markdown files + index.json
+// 文章存储在 /posts/*.md 文件中，通过 posts/index.json 建立索引
+// 浏览器端使用 fetch() 加载，marked.js 将 Markdown 转为 HTML
+// 管理模式下通过 GitHub Contents API 推送文件到仓库，Cloudflare Pages 自动部署
+// ================================================================
+
+// (types removed for JS compat)
+let articlesMeta = [];       // 从 index.json 加载的文章元数据列表
+// (types removed for JS compat)
+const articleBodyCache = new Map(); // 文章正文缓存（避免重复 fetch）
+
+const INDEX_JSON_PATH = 'posts/index.json';
+const POSTS_DIR = 'posts';
+
+/**
+ * 解析 Markdown 文件中的 YAML frontmatter
+ * 返回 { meta: object, body: string } 或 null
+ */
+function parseFrontmatter(mdContent) {
+    const fmRegex = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/;
+    const match = mdContent.match(fmRegex);
+    if (!match) return null;
+    // 简易 YAML 解析（只支持基本类型）
+    function simpleYaml(str) {
+        const result = {};
+        let currentKey = null;
+        let inArray = false;
+        let arrItems = [];
+        for (const line of str.split('\n')) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith('#')) continue;
+            // Array item
+            if (/^- /.test(trimmed)) {
+                if (currentKey && !inArray) { inArray = true; arrItems = []; }
+                if (inArray) arrItems.push(trimmed.replace(/^-\s+/, '').replace(/^['"]|['"]$/g, ''));
+                continue;
+            }
+            // End array
+            if (inArray && currentKey) {
+                result[currentKey] = arrItems;
+                inArray = false; arrItems = [];
+            }
+            // Key: value
+            const kvMatch = trimmed.match(/^(\w[\w-]*):\s*(.*)$/);
+            if (kvMatch) {
+                currentKey = kvMatch[1];
+                let val = kvMatch[2].trim();
+                // Strip quotes
+                if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+                    val = val.slice(1, -1);
+                }
+                result[currentKey] = val;
+            }
+        }
+        // Flush last array
+        if (inArray && currentKey) result[currentKey] = arrItems;
+        return result;
+    }
+    return {
+        meta: simpleYaml(match[1]),
+        body: match[2].trim()
+    };
+}
+
+/**
+ * 将 meta + body 组装为完整的 Markdown 字符串（含 frontmatter）
+ */
+function buildMarkdown(meta, body) {
+    let lines = ['---'];
+    if (meta.title) lines.push(`title: ${meta.title}`);
+    if (meta.date) lines.push(`date: ${meta.date}`);
+    if (meta.category) lines.push(`category: ${meta.category}`);
+    if (meta.tags && meta.tags.length) {
+        lines.push('tags:');
+        meta.tags.forEach(t => lines.push(`  - ${t}`));
+    } else {
+        lines.push('tags: []');
+    }
+    if (meta.excerpt) lines.push(`excerpt: ${meta.excerpt}`);
+    if (meta.slug) lines.push(`slug: ${meta.slug}`);
+    lines.push('---');
+    lines.push('');
+    lines.push(body);
+    return lines.join('\n');
+}
+
+/**
+ * 从 URL 生成 slug（用于新建文章时自动生成）
+ */
+function generateSlug(title) {
+    // Only auto-generate from English/alphanumeric characters
+    // Chinese titles should use manual slug input
+    const slug = title.toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+        .slice(0, 60);
+    return slug || '';
+}
+
+/**
+ * 加载文章元数据索引（index.json）
+ * 失败时回退到 localStorage 缓存
+ */
+async function loadArticlesMeta() {
+    try {
+        const resp = await fetch(INDEX_JSON_PATH + '?t=' + Date.now());
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        articlesMeta = await resp.json();
+        // Cache to localStorage as fallback
+        localStorage.setItem('blog_meta_fallback', JSON.stringify(articlesMeta));
+        return articlesMeta;
+    } catch(e) {
+        console.warn('Failed to load index.json, trying fallback:', e.message);
+        try {
+            const cached = localStorage.getItem('blog_meta_fallback');
+            if (cached) { articlesMeta = JSON.parse(cached); return articlesMeta; }
+        } catch(e2) {}
+        articlesMeta = [];
+        return articlesMeta;
+    }
+}
+
+/**
+ * 懒加载并渲染单篇文章的正文内容
+ * 使用 marked.js 将 Markdown → HTML，结果缓存在 articleBodyCache 中
+ * @param {string} slug
+ * @returns {Promise<string>} 渲染后的 HTML
+ */
+async function loadArticleBody(slug) {
+    if (articleBodyCache.has(slug)) return articleBodyCache.get(slug);
+    try {
+        const resp = await fetch(`${POSTS_DIR}/${slug}.md?t=` + Date.now());
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const rawText = await resp.text();
+        // Strip YAML frontmatter if present
+        const mdText = rawText.replace(/^---\s*\n[\s\S]*?\n---\s*\n?/, '');
+        // Configure marked options
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            headerIds: true,
+            mangle: false
+        });
+        const html = marked.parse(mdText);
+        articleBodyCache.set(slug, html);
+        return html;
+    } catch(e) {
+        console.warn(`Failed to load post ${slug}:`, e.message);
+        return '<p style="color:var(--text-muted)">文章加载失败，请稍后重试。</p>';
+    }
+}
+
+// ================================================================
+// GITHUB API LAYER — 仅在管理模式下可用
+// 通过 GitHub Contents API 在浏览器端直接 push / delete 文件
+// 需要用户配置 Personal Access Token（PAT），具有 repo 权限
+// ================================================================
+const GH_TOKEN_KEY = 'blog_github_token';
+const GH_REPO_KEY = 'blog_github_repo';   // 格式 "owner/repo"
+const GH_BRANCH_KEY = 'blog_github_branch'; // 默认 main
+
+function getGithubToken() { return localStorage.getItem(GH_TOKEN_KEY) || ''; }
+function getGithubRepo() { return localStorage.getItem(GH_REPO_KEY) || ''; }
+function getGithubBranch() { return localStorage.getItem(GH_BRANCH_KEY) || 'main'; }
+function isGithubConnected() { return !!getGithubToken() && !!getGithubRepo(); }
+
+function updateGithubStatusUI() {
+    const dot = document.getElementById('ghStatusDot');
+    const txt = document.getElementById('ghStatusText');
+    if (!dot || !txt) return;
+    const connected = isGithubConnected();
+    dot.className = 'status-dot ' + (connected ? 'connected' : 'disabled');
+    dot.style.background = connected ? '#22c55e' : '#ef4444';
+    txt.textContent = connected ? getGithubRepo() : '未连接';
+}
+
+/**
+ * 调用 GitHub API 的通用方法
+ * @param {string} path - API path (e.g., "/contents/posts/foo.md")
+ * @param {object} opts - fetch options
+ * @returns {Promise<object>}
+ */
+async function githubAPI(path, opts = {}) {
+    const token = getGithubToken();
+    const repo = getGithubRepo();
+    if (!token || !repo) throw new Error('GitHub 未配置，请先在设置中填入 Token 和仓库名');
+    const url = `https://api.github.com/repos/${repo}${path}`;
+    const headers = {
+        'Authorization': `token ${token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        ...opts.headers
+    };
+    const resp = await fetch(url, { ...opts, headers });
+    if (resp.status === 401) throw new Error('Token 无效或已过期');
+    if (resp.status === 404) throw new Error('资源不存在 (404)');
+    if (resp.status === 403) throw new Error('API 速率限制或权限不足');
+    if (!resp.ok) {
+        const errBody = await resp.text().catch(() => '');
+        throw new Error(`GitHub API 错误 ${resp.status}: ${errBody.slice(0, 200)}`);
+    }
+    return resp;
+}
+
+/**
+ * 获取文件当前 SHA（更新/删除时需要）
+ */
+async function getFileSha(filePath) {
+    try {
+        const resp = await githubAPI(`/contents/${filePath}`);
+        const data = await resp.json();
+        return data.sha;
+    } catch(e) {
+        return null; // 新文件没有 SHA
+    }
+}
+
+/**
+ * 通过 GitHub Contents API 创建或更新一个文件
+ * @param {string} filePath - 仓库内路径，如 "posts/my-post.md"
+ * @param {string} content - 文件内容
+ * @param {string} message - commit message
+ */
+async function githubPushFile(filePath, content, message) {
+    const sha = await getFileSha(filePath);
+    const body = {
+        message,
+        content: btoa(unescape(encodeURIComponent(content))),
+        branch: getGithubBranch()
+    };
+    if (sha) body.sha = sha;
+    await githubAPI(`/contents/${filePath}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+}
+
+/**
+ * 通过 GitHub Contents API 删除一个文件
+ * @param {string} filePath - 仓库内路径
+ * @param {string} message - commit message
+ */
+async function githubDeleteFile(filePath, message) {
+    const sha = await getFileSha(filePath);
+    if (!sha) throw new Error('文件不存在，无法删除');
+    await githubAPI(`/contents/${filePath}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, sha, branch: getGithubBranch() })
+    });
+}
+
+/**
+ * 推送文章：同时更新 .md 正文文件和 index.json 索引
+ */
+async function pushArticle(meta, bodyMd, isNew) {
+    const slug = meta.slug;
+    // Push the .md file
+    const mdContent = buildMarkdown(meta, bodyMd);
+    const mdPath = `${POSTS_DIR}/${slug}.md`;
+    await githubPushFile(mdPath, mdContent, isNew ? `✨ 新建文章: ${meta.title}` : `✏️ 更新文章: ${meta.title}`);
+
+    // Update and push index.json
+    if (isNew) {
+        articlesMeta.unshift({
+            slug: meta.slug,
+            title: meta.title,
+            date: meta.date,
+            category: meta.category,
+            tags: meta.tags,
+            excerpt: meta.excerpt
+        });
+    } else {
+        const idx = articlesMeta.findIndex(a => a.slug === slug);
+        if (idx >= 0) {
+            articlesMeta[idx] = {
+                slug: meta.slug,
+                title: meta.title,
+                date: meta.date,
+                category: meta.category,
+                tags: meta.tags,
+                excerpt: meta.excerpt
+            };
+        }
+    }
+    const indexPath = INDEX_JSON_PATH;
+    const indexContent = JSON.stringify(articlesMeta, null, 2) + '\n';
+    await githubPushFile(indexPath, indexContent, `📝 更新文章索引`);
+
+    // Update local cache immediately
+    localStorage.setItem('blog_meta_fallback', JSON.stringify(articlesMeta));
+
+    // Clear body cache for this article so it reloads fresh next time
+    articleBodyCache.delete(slug);
+}
+
+/**
+ * 删除文章：删除 .md 文件 + 更新 index.json
+ */
+async function deleteArticleFromGithub(slug, title) {
+    // Delete .md file
+    await githubDeleteFile(`${POSTS_DIR}/${slug}.md`, `🗑️ 删除文章: ${title}`);
+    // Remove from index
+    articlesMeta = articlesMeta.filter(a => a.slug !== slug);
+    const indexContent = JSON.stringify(articlesMeta, null, 2) + '\n';
+    await githubPushFile(INDEX_JSON_PATH, indexContent, `🗑️ 删除文章索引: ${title}`);
+    // Update cache
+    localStorage.setItem('blog_meta_fallback', JSON.stringify(articlesMeta));
+    articleBodyCache.delete(slug);
+}
+
+// ================================================================
+// 点赞数据层 — 持久化到 posts/likes.json（跨设备同步）
+// ================================================================
+const LIKE_STORAGE_KEY = 'blog_article_likes_v2';
+const LIKES_JSON_PATH = 'posts/likes.json';
+let likesData = {};  // in-memory likes cache: { slug: count }
+let likesLoaded = false;
+let likesSyncing = false;
+
+/** Load likes from posts/likes.json via GitHub API, fallback to localStorage */
+async function loadLikesRemote() {
+    try {
+        // Try fetching likes.json from the blog's hosted static files first
+        const resp = await fetch(LIKES_JSON_PATH + '?t=' + Date.now());
+        if (resp.ok) {
+            likesData = await resp.json();
+            likesLoaded = true;
+            // Also update localStorage cache
+            localStorage.setItem(LIKE_STORAGE_KEY, JSON.stringify(likesData));
+            return likesData;
+        }
+    } catch(e) { /* network error, fallback */ }
+
+    // Fallback to localStorage
+    try {
+        const stored = localStorage.getItem(LIKE_STORAGE_KEY);
+        if (stored) {
+            likesData = JSON.parse(stored);
+            likesLoaded = true;
+            return likesData;
+        }
+    } catch(e) {}
+
+    // Initialize defaults
+    const defaultLikes = {};
+    articlesMeta.forEach(a => { defaultLikes[a.slug] = 0; });
+    likesData = defaultLikes;
+    likesLoaded = true;
+    localStorage.setItem(LIKE_STORAGE_KEY, JSON.stringify(likesData));
+    return likesData;
+}
+
+/** Sync likes to GitHub (push likes.json). Requires admin/GitHub config. */
+async function syncLikesToGithub() {
+    if (likesSyncing) return;
+    likesSyncing = true;
+    try {
+        if (!isGithubConnected()) return;
+        const content = JSON.stringify(likesData, null, 2) + '\n';
+        await githubPushFile(LIKES_JSON_PATH, content, '👍 更新点赞数据');
+    } catch(e) {
+        console.warn('Failed to sync likes:', e);
+    } finally {
+        likesSyncing = false;
+    }
+}
+
+function loadLikes() {
+    if (!likesLoaded) {
+        // Synchronous fallback: try localStorage
+        try {
+            const stored = localStorage.getItem(LIKE_STORAGE_KEY);
+            if (stored) { likesData = JSON.parse(stored); likesLoaded = true; }
+        } catch(e) {}
+        if (!likesLoaded) {
+            const defaultLikes = {};
+            articlesMeta.forEach(a => { defaultLikes[a.slug] = 0; });
+            likesData = defaultLikes;
+            likesLoaded = true;
+        }
+    }
+    return likesData;
+}
+
+function getArticleLikes(slug) {
+    const likes = loadLikes();
+    return likes[slug] || 0;
+}
+
+function getTotalLikes() {
+    const likes = loadLikes();
+    return Object.values(likes).reduce((sum, v) => sum + v, 0);
+}
+
+function incrementLike(slug) {
+    const likes = loadLikes();
+    const likedKey = 'blog_user_liked_' + slug;
+    const hasLiked = localStorage.getItem(likedKey) === 'true';
+
+    if (hasLiked) {
+        likes[slug] = Math.max(0, (likes[slug] || 1) - 1);
+        localStorage.setItem(likedKey, 'false');
+        showToast('已取消点赞');
+    } else {
+        likes[slug] = (likes[slug] || 0) + 1;
+        localStorage.setItem(likedKey, 'true');
+        showToast('感谢你的喜欢 ♥', 'success');
+    }
+    likesData = likes;
+    localStorage.setItem(LIKE_STORAGE_KEY, JSON.stringify(likesData));
+    // Async push to GitHub for cross-device sync
+    syncLikesToGithub();
+    return likes[slug];
+}
+
+function hasUserLiked(slug) {
+    return localStorage.getItem('blog_user_liked_' + slug) === 'true';
+}
+
+// ================================================================
+// NAVIGATION (Hash-based routing)
+// ================================================================
+// URL scheme:
+//   https://domain/                  -> home
+//   https://domain/#/post/slug      -> detail
+//   https://domain/#/editor         -> editor
+//   https://domain/#/editor/slug    -> edit existing
+//   https://domain/#/about          -> about
+// ================================================================
+const VIEWS = ['home','detail','editor','about'];
+
+function parseHash() {
+    const hash = window.location.hash || '';
+    const path = hash.replace(/^#\/?/, '');           // strip leading # and /
+    if (!path) return { view: 'home', data: null };
+    if (path === 'about') return { view: 'about', data: null };
+    if (path === 'editor') return { view: 'editor', data: null };
+    if (path.startsWith('editor/')) return { view: 'editor', data: path.slice(7) };
+    if (path.startsWith('post/')) return { view: 'detail', data: path.slice(5) };
+    return { view: 'home', data: null };
+}
+
+function navigateTo(view, data) {
+    // Update URL hash
+    let newHash = '';
+    if (view === 'home') newHash = '#/';
+    else if (view === 'about') newHash = '#/about';
+    else if (view === 'editor') newHash = data ? '#/editor/' + data : '#/editor';
+    else if (view === 'detail' && data) newHash = '#/post/' + data;
+
+    if (window.location.hash !== newHash) {
+        // Use replaceState when called from hashchange to avoid double entry
+        // (caller will pass true to skip pushState)
+        if (!navigateTo._fromHashchange) {
+            history.pushState(null, '', newHash);
+        }
+    }
+
+    VIEWS.forEach(v => {
+        const el = document.getElementById('view-' + v);
+        if(el) el.style.display = v === view ? 'block' : 'none';
+    });
+    // Hide Giscus when leaving detail view
+    if (view !== 'detail') hideGiscus();
+
+    document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
+    document.getElementById('nav-home').classList.toggle('active', view === 'home');
+    if (view === 'about') {
+        const na = document.getElementById('nav-about');
+        if(na) na.classList.add('active');
+    }
+    if (view === 'editor' && ADMIN_MODE) {
+        const ne = document.getElementById('nav-editor');
+        if(ne) ne.classList.add('active');
+    }
+
+    currentView = view;
+    window.scrollTo({ top: 0 });
+
+    if (view === 'home') renderHome();
+    else if (view === 'detail' && data) renderDetail(data);
+    else if (view === 'editor' && ADMIN_MODE) renderEditor(data);
+    else if (view === 'about') renderAbout();
+}
+
+// Listen for browser back/forward
+window.addEventListener('hashchange', () => {
+    navigateTo._fromHashchange = true;
+    const { view, data } = parseHash();
+    // Directly switch view without hash update
+    VIEWS.forEach(v => {
+        const el = document.getElementById('view-' + v);
+        if(el) el.style.display = v === view ? 'block' : 'none';
+    });
+    if (view !== 'detail') hideGiscus();
+    document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
+    document.getElementById('nav-home').classList.toggle('active', view === 'home');
+    if (view === 'about') {
+        const na = document.getElementById('nav-about');
+        if(na) na.classList.add('active');
+    }
+    if (view === 'editor' && ADMIN_MODE) {
+        const ne = document.getElementById('nav-editor');
+        if(ne) ne.classList.add('active');
+    }
+    currentView = view;
+    window.scrollTo({ top: 0 });
+
+    if (view === 'home') renderHome();
+    else if (view === 'detail' && data) renderDetail(data);
+    else if (view === 'editor' && ADMIN_MODE) renderEditor(data);
+    else if (view === 'about') renderAbout();
+
+    navigateTo._fromHashchange = false;
+});
+
+// Handle popstate (back/forward without hashchange firing)
+window.addEventListener('popstate', () => {
+    const { view, data } = parseHash();
+    navigateTo(view, data);
+});
+
+// ================================================================
+// HOME RENDERING
+// ================================================================
+let currentView = 'home';
+let currentPage = 1;
+let searchQuery = '';
+let activeCategory = '';
+const PAGE_SIZE = 5;
+
+function getFilteredArticles() {
+    let list = [...articlesMeta];
+    if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        list = list.filter(a =>
+            a.title.toLowerCase().includes(q) ||
+            a.excerpt.toLowerCase().includes(q) ||
+            (a.tags && a.tags.some(t => t.toLowerCase().includes(q))) ||
+            a.category.toLowerCase().includes(q)
+        );
+    }
+    if (activeCategory) {
+        list = list.filter(a => a.category === activeCategory);
+    }
+    return list.sort((a,b) => new Date(b.date) - new Date(a.date));
+}
+
+async function renderHome() {
+    const filtered = getFilteredArticles();
+    const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+    currentPage = Math.min(currentPage, Math.max(1, totalPages));
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const pageItems = filtered.slice(start, start + PAGE_SIZE);
+
+    // Hero stats
+    const categories = [...new Set(articlesMeta.map(a => a.category))];
+    const totalLikes = getTotalLikes();
+    document.getElementById('heroStats').innerHTML = `
+        <div class="hero-stat"><div class="num">${articlesMeta.length}</div><div class="label">篇文章</div></div>
+        <div class="hero-stat"><div class="num" id="commentCountStat">-</div><div class="label">条评论</div></div>
+        <div class="hero-stat"><div class="num">${totalLikes}</div><div class="label">次点赞</div></div>
+    `;
+    // Async fetch total comment count from Giscus Discussions repo
+    fetchCommentCount();
+
+    // Filter tags
+    let tagHtml = `<span class="filter-tag ${!activeCategory?'active':''}" onclick="setFilter('')">全部</span>`;
+    categories.forEach(c => {
+        tagHtml += `<span class="filter-tag ${activeCategory===c?'active':''}" onclick="setFilter('${escapeHtml(c)}')">${escapeHtml(c)}</span>`;
+    });
+    document.getElementById('filterTags').innerHTML = tagHtml;
+
+    // Articles
+    const container = document.getElementById('articlesContainer');
+    if (pageItems.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="icon">📭</div>
+                <h3>${searchQuery?'没有找到相关文章':'还没有文章'}</h3>
+                <p>${searchQuery?'试试其他关键词':'敬请期待更多内容~'}</p>
+            </div>`;
+    } else {
+        container.innerHTML = pageItems.map(a => renderArticleCard(a)).join('');
+    }
+
+    // Pagination
+    const pag = document.getElementById('pagination');
+    if (totalPages <= 1) { pag.innerHTML = ''; }
+    else {
+        let pg = '';
+        pg += `<button class="page-btn" ${currentPage<=1?'disabled':''} onclick="goPage(${currentPage-1})">‹</button>`;
+        for(let i=1;i<=totalPages;i++) {
+            if(i===1 || i===totalPages || Math.abs(i-currentPage)<=1) {
+                pg += `<button class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+            } else if(Math.abs(i-currentPage)===2) {
+                pg += `<span style="color:var(--text-muted)">…</span>`;
+            }
+        }
+        pg += `<button class="page-btn" ${currentPage>=totalPages?'disabled':''} onclick="goPage(${currentPage+1})">›</button>`;
+        pag.innerHTML = pg;
+    }
+
+    renderSidebar();
+    updateGithubStatusUI();
+
+    document.getElementById('view-home').style.display = 'block';
+}
+
+/** Fetch total comment count from Giscus Discussions repo (public API, no token needed) */
+function fetchCommentCount() {
+    const el = document.getElementById('commentCountStat');
+    if (!el) return;
+    if (!GISCUS_CONFIG.repo) { el.textContent = '0'; return; }
+    fetch(`https://api.github.com/repos/${GISCUS_CONFIG.repo}/discussions?per_page=100&state=all`)
+        .then(r => r.ok ? r.json() : [])
+        .then(discussions => {
+            if (!Array.isArray(discussions)) { el.textContent = '0'; return; }
+            const total = discussions.reduce((sum, d) => sum + (d.comments || 0), 0);
+            el.textContent = total;
+        })
+        .catch(() => { el.textContent = '0'; });
+}
+
+function renderArticleCard(a) {
+    const likes = getArticleLikes(a.slug);
+    return `
+    <article class="article-card" onclick="navigateTo('detail','${a.slug}')">
+        <div class="card-top">
+            <div class="card-meta">
+                <span class="card-tag">${escapeHtml(a.category)}</span>
+                <span>📅 ${a.date}</span>
+            </div>
+            ${ADMIN_MODE ? `<div class="card-actions" onclick="event.stopPropagation()">
+                <button class="card-action-btn" title="编辑" onclick="navigateTo('editor','${a.slug}')">✎</button>
+                <button class="card-action-btn delete" title="删除" onclick="confirmDeleteArticle('${a.slug}')">✕</button>
+            </div>` : ''}
+        </div>
+        <h2>${escapeHtml(a.title)}</h2>
+        <p class="card-excerpt">${escapeHtml(a.excerpt)}</p>
+        <div class="card-footer">
+            ${(a.tags||[]).map(t=>`<span class="filter-tag" style="padding:2px 8px;font-size:0.74rem;" onclick="event.stopPropagation();searchByTag('${escapeHtml(t)}')">#${escapeHtml(t)}</span>`).join('')}
+            <span class="card-comment-count"><span class="heart-icon">♥</span> ${likes}</span>
+        </div>
+    </article>`;
+}
+
+function renderSidebar() {
+    const cats = {};
+    articlesMeta.forEach(a => { cats[a.category]=(cats[a.category]||0)+1; });
+    document.getElementById('categoryList').innerHTML =
+        Object.entries(cats).map(([c,n])=>`
+        <li class="cat-item" onclick="setFilter('${escapeHtml(c)}')">
+            <span class="cat-name">${escapeHtml(c)}</span>
+            <span class="cat-count">${n}</span>
+        </li>`).join('');
+
+    const allTags = {};
+    articlesMeta.forEach(a => (a.tags||[]).forEach(t=>allTags[t]=(allTags[t]||0)+1));
+    document.getElementById('tagCloud').innerHTML =
+        Object.keys(allTags).sort().map(t=>`<span class="tag-cloud-item" onclick="searchByTag('${escapeHtml(t)}')">#${escapeHtml(t)}</span>`).join('');
+
+    const recent = [...articlesMeta].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,5);
+    document.getElementById('recentList').innerHTML = recent.map(a=>`
+        <li class="cat-item" onclick="navigateTo('detail','${a.slug}')">
+            <span class="cat-name" style="font-size:0.84rem;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.title)}</span>
+            <span class="cat-count">${a.date.slice(5)}</span>
+        </li>`).join('');
+}
+
+function setFilter(cat) { activeCategory = cat; currentPage = 1; renderHome(); }
+function goPage(p) { currentPage = p; renderHome(); window.scrollTo({top:0}); }
+
+function onSearch(q) {
+    searchQuery = q.trim();
+    currentPage = 1;
+    document.getElementById('searchClear').style.display = q ? 'block' : 'none';
+    renderHome();
+}
+function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    searchQuery = '';
+    document.getElementById('searchClear').style.display = 'none';
+    renderHome();
+}
+function searchByTag(tag) {
+    navigateTo('home');
+    setTimeout(() => {
+        document.getElementById('searchInput').value = tag;
+        onSearch(tag);
+    }, 50);
+}
+
+// ================================================================
+// DETAIL RENDERING — 异步加载 Markdown 正文
+// ================================================================
+async function renderDetail(slug) {
+    const article = articlesMeta.find(a => a.slug === slug);
+    if (!article) { showToast('文章不存在','error'); navigateTo('home'); return; }
+
+    // Show loading state
+    document.getElementById('detailPage').innerHTML = `
+        <div class="detail-header">
+            <h1>${escapeHtml(article.title)}</h1>
+            <div class="detail-info-row">
+                <span class="card-tag">${escapeHtml(article.category)}</span>
+                <span>📅 ${article.date}</span>
+                ${(article.tags||[]).map(t=>`<span class="filter-tag" style="padding:2px 8px;font-size:0.74rem;">#${escapeHtml(t)}</span>`).join('')}
+            </div>
+        </div>
+        <div style="text-align:center;padding:40px 0;color:var(--text-muted);">
+            <p>正在加载文章...</p>
+        </div>
+        ${renderGiscusSection(slug)}
+    `;
+    document.getElementById('view-detail').style.display = 'block';
+
+    // Load and render markdown body
+    const bodyHtml = await loadArticleBody(slug);
+
+    // Extract headings for TOC
+    const tmp = document.createElement('div');
+    tmp.innerHTML = bodyHtml;
+    const headings = Array.from(tmp.querySelectorAll('h2,h3'));
+
+    const likes = getArticleLikes(slug);
+    const isLiked = hasUserLiked(slug);
+
+    document.getElementById('detailPage').innerHTML = `
+        <div class="detail-header">
+            <h1>${escapeHtml(article.title)}</h1>
+            <div class="detail-info-row">
+                <span class="card-tag">${escapeHtml(article.category)}</span>
+                <span>📅 ${article.date}</span>
+                ${(article.tags||[]).map(t=>`<span class="filter-tag" style="padding:2px 8px;font-size:0.74rem;">#${escapeHtml(t)}</span>`).join('')}
+            </div>
+        </div>
+        <div class="detail-body" id="detailBody">${bodyHtml}</div>
+        <div class="article-like-bar">
+            <button class="like-btn ${isLiked?'liked':''}" id="likeBtn${slug}" onclick="handleLike('${slug}')">
+                ${isLiked ? '<span class="heart-icon">♥</span>' : '<span class="heart-icon-empty">♡</span>'} 喜欢这篇文章
+            </button>
+            <span class="like-count" id="likeCount${slug}">${likes} 人喜欢</span>
+        </div>
+        ${renderGiscusSection(slug)}
+    `;
+
+    // TOC
+    const tocWidget = document.getElementById('tocWidget');
+    if (headings.length > 0) {
+        tocWidget.style.display = 'block';
+        document.getElementById('tocList').innerHTML = headings.map((h,i)=>
+            `<li class="toc-item" data-toc="${i}" onclick="scrollToHeading(${i})">${escapeHtml(h.textContent)}</li>`
+        ).join('');
+    } else {
+        tocWidget.style.display = 'none';
+    }
+
+    observeHeadings(headings);
+    loadGiscus(slug);
+}
+
+function handleLike(slug) {
+    const newCount = incrementLike(slug);
+    const btn = document.getElementById('likeBtn' + slug);
+    const cnt = document.getElementById('likeCount' + slug);
+    if (btn) {
+        const isLikedNow = hasUserLiked(slug);
+        btn.className = 'like-btn ' + (isLikedNow ? 'liked' : '');
+        btn.innerHTML = (isLikedNow ? '<span class="heart-icon">♥</span>' : '<span class="heart-icon-empty">♡</span>') + ' 喜欢这篇文章';
+    }
+    if (cnt) cnt.textContent = newCount + ' 人喜欢';
+    updateHeroStatsLikeLike();
+}
+
+function updateHeroStatsLikeLike() {
+    if (currentView === 'home') {
+        const totalLikes = getTotalLikes();
+        const statEls = document.querySelectorAll('.hero-stat .num');
+        if (statEls.length >= 3) statEls[2].textContent = totalLikes;
+    }
+}
+
+function scrollToHeading(idx) {
+    const els = document.querySelectorAll('#detailBody h2, #detailBody h3');
+    if (els[idx]) els[idx].scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function observeHeadings(headings) {
+    const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                document.querySelectorAll('.toc-item').forEach(t => t.classList.remove('active'));
+                const idx = headings.indexOf(entry.target);
+                if (idx >= 0) {
+                    const tocItem = document.querySelector(`.toc-item[data-toc="${idx}"]`);
+                    if (tocItem) tocItem.classList.add('active');
+                }
+            }
+        });
+    }, { rootMargin: '-60px 0px -70% 0px' });
+    headings.forEach(h => observer.observe(h));
+}
+
+// ================================================================
+// GISCUS COMMENTS
+// ================================================================
+const GISCUS_CONFIG = {
+    repo: 'YankeeDaddy/My-Blog-Comments-CF',
+    repoId: '',
+    category: 'Announcements',
+    categoryId: '',
+    mapping: 'specific',
+    strict: '0',
+    reactionsEnabled: '1',
+    emitMetadata: '0',
+    inputPosition: 'bottom',
+    theme: 'light',
+    lang: 'zh-CN'
+};
+
+function renderGiscusSection(slug) {
+    // Giscus container is now persistent (in the HTML, outside detailPage).
+    // This function just returns an empty string; actual loading is handled by loadGiscus().
+    return '';
+}
+
+let giscusInitialized = false;  // Track whether client.js has been loaded once
+
+function loadGiscus(slug) {
+    const container = document.getElementById('giscusContainer');
+    const target = document.getElementById('giscusTarget');
+    const loading = document.getElementById('giscusLoading');
+    if (!container || !target || !loading) return;
+
+    if (!GISCUS_CONFIG.repo || !GISCUS_CONFIG.repoId) {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = '';
+
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    GISCUS_CONFIG.theme = currentTheme === 'dark' ? 'dark' : 'light';
+
+    // Each article gets a unique Discussion via the hash path as the term
+    const giscusTerm = '#/post/' + slug;
+
+    // CASE 1: Giscus iframe already exists → update via postMessage
+    const existingIframe = target.querySelector('iframe.giscus-frame');
+    if (existingIframe && existingIframe.contentWindow) {
+        try {
+            existingIframe.contentWindow.postMessage(
+                { giscus: { setConfig: { term: giscusTerm, theme: GISCUS_CONFIG.theme } } },
+                'https://giscus.app'
+            );
+            loading.style.display = 'none';
+            target.style.display = '';
+            return;
+        } catch(e) { /* fall through */ }
+    }
+
+    // CASE 2: First-time load — inject the script
+    if (!giscusInitialized) {
+        giscusInitialized = true;
+
+        // Remove any stale elements
+        target.querySelectorAll('script, iframe').forEach(el => el.remove());
+
+        const script = document.createElement('script');
+        script.src = 'https://giscus.app/client.js';
+        script.async = true;
+        script.crossOrigin = 'anonymous';
+        script.setAttribute('data-repo', GISCUS_CONFIG.repo);
+        script.setAttribute('data-repo-id', GISCUS_CONFIG.repoId);
+        script.setAttribute('data-category', GISCUS_CONFIG.category);
+        script.setAttribute('data-category-id', GISCUS_CONFIG.categoryId);
+        script.setAttribute('data-mapping', 'specific');
+        script.setAttribute('data-term', giscusTerm);
+        script.setAttribute('data-strict', GISCUS_CONFIG.strict);
+        script.setAttribute('data-reactions-enabled', GISCUS_CONFIG.reactionsEnabled);
+        script.setAttribute('data-emit-metadata', GISCUS_CONFIG.emitMetadata);
+        script.setAttribute('data-input-position', GISCUS_CONFIG.inputPosition);
+        script.setAttribute('data-theme', GISCUS_CONFIG.theme);
+        script.setAttribute('data-lang', GISCUS_CONFIG.lang);
+
+        script.onload = function() {
+            loading.style.display = 'none';
+            target.style.display = '';
+        };
+        script.onerror = function() {
+            loading.innerHTML = '<div class="icon">😢</div><p>评论加载失败，请稍后重试。</p>';
+        };
+
+        target.appendChild(script);
+    }
+}
+
+function hideGiscus() {
+    const container = document.getElementById('giscusContainer');
+    if (container) container.style.display = 'none';
+}
+
+function syncGiscusTheme() {
+    const theme = document.documentElement.getAttribute('data-theme') || 'light';
+    const giscusTheme = theme === 'dark' ? 'dark' : 'light';
+    try {
+        const iframe = document.querySelector('iframe.giscus-frame');
+        if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.postMessage(
+                { giscus: { setConfig: { theme: giscusTheme } } },
+                'https://giscus.app'
+            );
+        }
+    } catch(e) {}
+}
+
+// ================================================================
+// MARKDOWN EDITOR — 双栏编辑器（左侧 Markdown 输入，右侧实时预览）
+// ================================================================
+let editingSlug = null;
+
+function renderEditor(slug) {
+    if (!ADMIN_MODE) { showToast('无权限','error'); navigateTo('home'); return; }
+
+    editingSlug = slug || null;
+
+    // Build editor UI (with async body loading)
+    buildEditorUI(slug);
+}
+
+async function buildEditorUI(slug) {
+    let article = null;
+    let bodyMd = '';
+
+    if (slug) {
+        article = articlesMeta.find(a => a.slug === slug);
+        if (article) {
+            // Try loading raw markdown (for editing), fallback to nothing
+            try {
+                const resp = await fetch(`${POSTS_DIR}/${slug}.md?t=` + Date.now());
+                if (resp.ok) {
+                    const rawMd = await resp.text();
+                    // Strip YAML frontmatter for editing (it is stored separately in form fields)
+                    bodyMd = rawMd.replace(/^---\s*\n[\s\S]*?\n---\s*\n?/, '');
+                }
+            } catch(e) {
+                bodyMd = '';
+            }
+        }
+    }
+
+    const categories = [...new Set(articlesMeta.map(a => a.category))];
+    const catOptions = categories.map(c =>
+        `<option value="${escapeHtml(c)}"${article && article.category===c?' selected':''}>${escapeHtml(c)}</option>`
+    ).join('');
+
+    document.getElementById('editorPage').innerHTML = `
+        <div class="editor-form">
+            <h2 style="font-family:var(--font-serif);margin-bottom:20px;font-size:1.3rem;">
+                ${editingSlug ? '✏️ 编辑文章' : '✨ 新建文章'}
+            </h2>
+            <div class="form-group">
+                <label class="form-label">标题 *</label>
+                <input type="text" class="form-input" id="ed_title"
+                       value="${article?escapeHtml(article.title):''}"
+                       placeholder="输入文章标题..." maxlength="120"
+                       oninput="onEditorTitleChange()">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">分类 *</label>
+                    <select class="form-select" id="ed_category">
+                        <option value="">选择分类</option>
+                        ${catOptions}
+                        <option value="新分类" ${(!article)?' selected':''}>+ 新建分类</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">标签（逗号分隔）</label>
+                    <input type="text" class="form-input" id="ed_tags"
+                           value="${article?(article.tags||[]).join(', '):''}"
+                           placeholder="例如：JavaScript, CSS, 教程">
+                </div>
+            </div>
+            <div class="form-group" id="newCatGroup" style="display:none;">
+                <label class="form-label">新分类名称</label>
+                <input type="text" class="form-input" id="ed_newcat" placeholder="输入新分类名称">
+            </div>
+            <div class="form-group">
+                <label class="form-label">摘要</label>
+                <input type="text" class="form-input" id="ed_excerpt"
+                       value="${article?escapeHtml(article.excerpt):''}"
+                       placeholder="简要描述这篇文章（可选）" maxlength="200">
+            </div>
+            <div class="form-group" id="slugGroup">
+                <label class="form-label">URL 标识 (Slug) * <span class="form-help">请使用英文，如 info-and-knowledge</span></label>
+                <input type="text" class="form-input" id="ed_slug"
+                       value="${article?escapeHtml(article.slug):''}"
+                       placeholder="请输入英文 URL 标识，如 my-first-post" style="font-family:monospace;font-size:0.85rem;">
+                <small style="color:var(--text-muted);font-size:0.78rem;margin-top:3px;display:block;">
+                    用于文章的 URL 地址，仅允许小写字母、数字和连字符。文章链接格式：#/post/你填写的slug
+                </small>
+            </div>
+            <div class="form-group">
+                <label class="form-label">正文内容 * <span class="form-help">使用 Markdown 语法编写</span></label>
+                <div class="editor-toolbar">
+                    <button type="button" class="toolbar-btn" onclick="insertMD('**','**')" title="加粗"><b>B</b></button>
+                    <button type="button" class="toolbar-btn" onclick="insertMD('*','*')" title="斜体"><i>I</i></button>
+                    <button type="button" class="toolbar-btn" onclick="insertMD('\x60','\x60')" title="行内代码">&lt;/&gt;</button>
+                    <button type="button" class="toolbar-btn" onclick="insertMD('\n> ','')" title="引用">❝</button>
+                    <button type="button" class="toolbar-btn" onclick="insertMD('\n### ','')" title="标题">H3</button>
+                    <button type="button" class="toolbar-btn" onclick="insertMD('\n\x60\x60\x60\n','\n\x60\x60\x60\n')" title="代码块">{}</button>
+                    <button type="button" class="toolbar-btn" onclick="insertMD('\n- ','')" title="列表">≡</button>
+                    <button type="button" class="toolbar-btn" onclick="insertMD('\n---\n\n','')" title="分隔线">—</button>
+                    <button type="button" class="toolbar-btn" onclick="insertMD('[','](url)')" title="链接">🔗</button>
+                    <button type="button" class="toolbar-btn" onclick="insertMD('![alt](','url)')" title="图片">🖼</button>
+                </div>
+                <div class="editor-split">
+                    <div class="md-editor-pane">
+                        <div class="preview-header">Markdown 编辑</div>
+                        <textarea class="md-editor" id="ed_body"
+                                  placeholder="在此使用 Markdown 编写文章正文..."
+                                  oninput="onEditorInput()"
+                        >${bodyMd}</textarea>
+                    </div>
+                    <div class="md-editor-pane">
+                        <div class="preview-header">实时预览</div>
+                        <div class="md-preview" id="ed_preview"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="btn-secondary" onclick="goBackFromEditor()">取消</button>
+                ${isGithubConnected() ?
+                    `<button class="btn-primary" onclick="saveArticle()">
+                        ${editingSlug ? '💾 保存修改 & 推送到 GitHub' : '🚀 发布文章到 GitHub'}
+                    </button>`
+                :
+                    `<button class="btn-primary" onclick="saveArticleLocal()" title="需要先配置 GitHub 才能推送">
+                        💾 保存到本地预览
+                    </button>
+                    <span style="font-size:0.84rem;color:var(--text-muted);align-self:center;">
+                        ⚠️ 请先在侧边栏配置 GitHub Token 以便推送到远程
+                    </span>`
+                }
+            </div>
+        </div>`;
+
+    // Category select watcher
+    setTimeout(() => {
+        const catSel = document.getElementById('ed_category');
+        if (catSel) catSel.addEventListener('change', function() {
+            document.getElementById('newCatGroup').style.display =
+                this.value === '新分类' ? 'block' : 'none';
+        });
+    }, 0);
+
+    // Initial preview
+    onEditorInput();
+
+    document.getElementById('view-editor').style.display = 'block';
+}
+
+/** Insert markdown syntax at cursor position in editor */
+function insertMD(before, after) {
+    const ta = document.getElementById('ed_body');
+    if (!ta) return;
+    const s = ta.selectionStart, e = ta.selectionEnd;
+    const txt = ta.value;
+    ta.value = txt.substring(0,s) + before + txt.substring(s,e) + after + txt.substring(e);
+    ta.focus();
+    ta.setSelectionRange(s + before.length, s + before.length + (e - s));
+    onEditorInput();
+}
+
+/** Real-time preview: convert markdown textarea content to HTML */
+function onEditorInput() {
+    const ta = document.getElementById('ed_body');
+    const preview = document.getElementById('ed_preview');
+    if (!ta || !preview) return;
+    const mdText = ta.value;
+    if (!mdText.trim()) { preview.innerHTML = '<p style="color:var(--text-muted);padding:20px;">预览区域...</p>'; return; }
+    try {
+        marked.setOptions({ breaks: true, gfm: true });
+        const cleanMd = mdText.replace(/^---\s*\n[\s\S]*?\n---\s*\n?/, '');
+        preview.innerHTML = marked.parse(cleanMd);
+    } catch(e) {
+        preview.innerHTML = '<p style="color:#ef4444;">预览渲染出错</p>';
+    }
+}
+
+/** When title changes, auto-generate slug for new articles */
+function onEditorTitleChange() {
+    if (editingSlug) return; // Don't override existing slug
+    const titleInput = document.getElementById('ed_title');
+    const slugInput = document.getElementById('ed_slug');
+    if (titleInput && slugInput) {
+        const autoSlug = generateSlug(titleInput.value);
+        if (autoSlug) {
+            slugInput.value = autoSlug;
+        } else {
+            slugInput.placeholder = '标题包含中文，请手动输入英文 slug';
+        }
+    }
+}
+
+/**
+ * Save article — pushes to GitHub via Contents API
+ */
+async function saveArticle() {
+    if (!ADMIN_MODE) { showToast('无权限','error'); return; }
+    if (!isGithubConnected()) {
+        showToast('请先配置 GitHub Token 和仓库名','error');
+        showGithubConfig();
+        return;
+    }
+
+    const title = document.getElementById('ed_title').value.trim();
+    let category = document.getElementById('ed_category').value;
+    if (category === '新分类') {
+        category = document.getElementById('ed_newcat').value.trim() || '未分类';
+    }
+    const tagsStr = document.getElementById('ed_tags').value;
+    const tags = tagsStr ? tagsStr.split(/[,，]/).map(t=>t.trim()).filter(Boolean) : [];
+    const excerpt = document.getElementById('ed_excerpt').value.trim();
+    const bodyMd = document.getElementById('ed_body').value.trim();
+    let slug = document.getElementById('ed_slug').value.trim();
+
+    if (!title) { showToast('请输入标题','error'); return; }
+    if (!category) { showToast('请选择或创建分类','error'); return; }
+    if (!bodyMd) { showToast('请输入正文内容','error'); return; }
+    if (!slug) slug = generateSlug(title);
+    if (!slug) { showToast('请填写 URL 标识 (Slug)，仅允许英文小写字母、数字和连字符','error'); return; }
+    // Validate slug: only lowercase letters, numbers and hyphens
+    slug = slug.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    if (!slug) { showToast('URL 标识 (Slug) 格式无效，请使用英文','error'); return; }
+
+    const isNew = !editingSlug;
+    const finalSlug = isNew ? slug : (editingSlug !== slug ? slug : editingSlug);
+
+    const meta = {
+        slug: finalSlug,
+        title,
+        date: editingSlug ? (articlesMeta.find(a=>a.slug===editingSlug)?.date || new Date().toISOString().slice(0,10)) : new Date().toISOString().slice(0,10),
+        category,
+        tags,
+        excerpt: excerpt || bodyMd.replace(/^#+\s.*$/gm,'').slice(0,120).trim()
+    };
+
+    showToast(isNew ? '正在发布...' : '正在更新...', '');
+
+    try {
+        await pushArticle(meta, bodyMd, isNew);
+        showToast(isNew ? '文章已发布 🎉' : '文章已更新 ✓', 'success');
+        navigateTo('home');
+    } catch(err) {
+        console.error('Push failed:', err);
+        showToast('推送失败: ' + err.message, 'error');
+    }
+}
+
+/**
+ * Local save only — when GitHub is not configured, save to localStorage for preview
+ */
+function saveArticleLocal() {
+    if (!ADMIN_MODE) { showToast('无权限','error'); return; }
+
+    const title = document.getElementById('ed_title').value.trim();
+    let category = document.getElementById('ed_category').value;
+    if (category === '新分类') category = document.getElementById('ed_newcat').value.trim() || '未分类';
+    const tagsStr = document.getElementById('ed_tags').value;
+    const tags = tagsStr ? tagsStr.split(/[,，]/).map(t=>t.trim()).filter(Boolean) : [];
+    const excerpt = document.getElementById('ed_excerpt').value.trim();
+    const bodyMd = document.getElementById('ed_body').value.trim();
+    let slug = document.getElementById('ed_slug').value.trim() || generateSlug(title);
+
+    if (!title) { showToast('请输入标题','error'); return; }
+    if (!bodyMd) { showToast('请输入正文内容','error'); return; }
+    if (!slug) { showToast('请填写 URL 标识 (Slug)，仅允许英文小写字母、数字和连字符','error'); return; }
+    slug = slug.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    if (!slug) { showToast('URL 标识 (Slug) 格式无效，请使用英文','error'); return; }
+
+    const meta = { slug, title, date: new Date().toISOString().slice(0,10), category, tags, excerpt: excerpt || title.slice(0,80) };
+
+    // Save to local meta (won't persist across page loads without GitHub)
+    const existingIdx = articlesMeta.findIndex(a => a.slug === slug);
+    if (existingIdx >= 0) {
+        articlesMeta[existingIdx] = meta;
+    } else {
+        articlesMeta.unshift(meta);
+    }
+
+    // Cache body locally
+    marked.setOptions({ breaks: true, gfm: true });
+    const cleanBodyMd = bodyMd.replace(/^---\s*\n[\s\S]*?\n---\s*\n?/, '');
+    articleBodyCache.set(slug, marked.parse(cleanBodyMd));
+
+    showToast('已保存到本地（未推送到 GitHub）','success');
+    navigateTo('home');
+}
+
+function goBackFromEditor() {
+    if (editingSlug) navigateTo('detail', editingSlug);
+    else navigateTo('home');
+}
+
+function confirmDeleteArticle(slug) {
+    if (!ADMIN_MODE) { showToast('无权限','error'); return; }
+    const article = articlesMeta.find(a => a.slug === slug);
+    showModal(
+        '删除文章',
+        `确定要删除「${article?article.title:''}」吗？此操作将从 GitHub 仓库中永久删除该文章。`,
+        async () => {
+            if (isGithubConnected()) {
+                showToast('正在删除...', '');
+                try {
+                    await deleteArticleFromGithub(slug, article?.title||'');
+                    showToast('文章已删除','success');
+                } catch(err) {
+                    showToast('删除失败: ' + err.message, 'error');
+                    closeModal();
+                    return;
+                }
+            } else {
+                // Local-only delete
+                articlesMeta = articlesMeta.filter(a => a.slug !== slug);
+                articleBodyCache.delete(slug);
+                showToast('已从本地移除（GitHub 未连接）','success');
+            }
+            closeModal();
+            renderHome();
+        }
+    );
+}
+
+// ================================================================
+// GITHUB CONFIG PANEL
+// ================================================================
+function showGithubConfig() {
+    const panel = document.createElement('div');
+    panel.className = 'gh-config-panel';
+    panel.id = 'githubConfigPanel';
+    panel.innerHTML = `
+        <h3>⚙️ GitHub 配置</h3>
+        <p style="font-size:0.84rem;color:var(--text-muted);margin-bottom:16px;line-height:1.6;">
+            配置后可直接在浏览器中将文章推送到 GitHub 仓库，Cloudflare Pages 会自动重新部署。
+        </p>
+        <label>Personal Access Token *</label>
+        <input type="password" id="cfg_token" placeholder="ghp_xxxxxxxxxxxx" value="${escapeHtml(getGithubToken())}">
+        <small style="font-size:0.76rem;color:var(--text-muted);display:block;margin-bottom:12px;">
+            需要具有 <code>repo</code> 权限的 PAT。
+            <a href="https://github.com/settings/tokens/new?scopes=repo&description=Blog%20Editor" target="_blank" rel="noopener">去生成 →</a>
+        </small>
+        <label>仓库地址 *</label>
+        <input type="text" id="cfg_repo" placeholder="your-username/your-repo" value="${escapeHtml(getGithubRepo())}">
+        <small style="font-size:0.76rem;color:var(--text-muted);display:block;margin-bottom:12px;">
+            格式：owner/repository-name
+        </small>
+        <label>分支名</label>
+        <input type="text" id="cfg_branch" placeholder="main" value="${escapeHtml(getGithubBranch())}">
+        <div class="gh-config-actions">
+            <button class="btn-primary" onclick="saveGithubConfig()" style="flex:1;">💾 保存配置</button>
+            <button class="btn-secondary" onclick="testGithubConnection()">🔗 测试连接</button>
+            <button class="btn-secondary" onclick="document.getElementById('githubConfigPanel').remove()">关闭</button>
+        </div>
+        <div id="cfgResult" style="margin-top:12px;font-size:0.84rem;"></div>
+    `;
+    // Insert after header or at top of view-editor/home
+    const target = document.getElementById('view-editor').style.display !== 'none'
+        ? document.getElementById('editorPage')
+        : document.querySelector('.hero-section');
+    if (target) target.insertBefore(panel, target.firstChild);
+         else document.getElementById('view-home').prepend(panel);
+}
+
+function saveGithubConfig() {
+    const token = document.getElementById('cfg_token').value.trim();
+    const repo = document.getElementById('cfg_repo').value.trim();
+    const branch = document.getElementById('cfg_branch').value.trim() || 'main';
+
+    if (!token) { showToast('请输入 Token','error'); return; }
+    if (!repo) { showToast('请输入仓库地址','error'); return; }
+
+    localStorage.setItem(GH_TOKEN_KEY, token);
+    localStorage.setItem(GH_REPO_KEY, repo);
+    localStorage.setItem(GH_BRANCH_KEY, branch);
+
+    updateGithubStatusUI();
+    showToast('GitHub 配置已保存 ✓','success');
+
+    // Re-render editor if we're on it to update button state
+    if (currentView === 'editor' && editingSlug !== null || currentView === 'editor' && ADMIN_MODE) {
+        buildEditorUI(editingSlug);
+    }
+
+    const resultEl = document.getElementById('cfgResult');
+    if (resultEl) resultEl.innerHTML = '<span style="color:#22c55e;">✓ 配置已保存</span>';
+}
+
+async function testGithubConnection() {
+    const resultEl = document.getElementById('cfgResult');
+    if (resultEl) resultEl.innerHTML = '<span style="color:var(--text-muted);">测试中...</span>';
+
+    // Temporarily save values for testing
+    const token = document.getElementById('cfg_token').value.trim();
+    const repo = document.getElementById('cfg_repo').value.trim();
+    const branch = document.getElementById('cfg_branch').value.trim() || 'main';
+
+    if (!token || !repo) {
+        if (resultEl) resultEl.innerHTML = '<span style="color:#ef4444;">✗ 请先填写 Token 和仓库地址</span>';
+        return;
+    }
+
+    try {
+        const resp = await fetch(`https://api.github.com/repos/${repo}`, {
+            headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+        });
+        if (resp.ok) {
+            const data = await resp.json();
+            if (resultEl) resultEl.innerHTML = `<span style="color:#22c55e;">✓ 连接成功！仓库: ${data.full_name} (${data.private?'私有':'公开'})</span>`;
+        } else if (resp.status === 401) {
+            if (resultEl) resultEl.innerHTML = '<span style="color:#ef4444;">✗ Token 无效或已过期</span>';
+        } else if (resp.status === 404) {
+            if (resultEl) resultEl.innerHTML = '<span style="color:#ef4444;">✗ 仓库不存在或无权访问</span>';
+        } else {
+            if (resultEl) resultEl.innerHTML = `<span style="color:#ef4444;">✗ 连接失败 (HTTP ${resp.status})</span>`;
+        }
+    } catch(e) {
+        if (resultEl) resultEl.innerHTML = '<span style="color:#ef4444;">✗ 网络错误: ' + e.message + '</span>';
+    }
+}
+
+// ================================================================
+// ABOUT PAGE
+// ================================================================
+function renderAbout() {
+    document.getElementById('aboutPage').innerHTML = `
+        <div class="about-hero">
+            <div class="about-avatar">B</div>
+            <h1>Blogger</h1>
+            <p>热爱技术与设计的全栈开发者</p>
+        </div>
+        <div class="about-content">
+            <div class="about-section">
+                <h2>👋 关于我</h2>
+                <p style="color:var(--text-secondary);line-height:1.8;">
+                    你好！我是 Blogger，一个热爱技术和设计的开发者。
+                    我喜欢用简洁优雅的方式解决问题，相信好的设计能让复杂的事情变得简单。
+                </p>
+                <p style="color:var(--text-secondary);line-height:1.8;margin-top:10px;">
+                    这个博客是我记录学习笔记、技术心得和生活感悟的地方。
+                    涵盖前端开发、设计思考、阅读笔记等内容。
+                </p>
+            </div>
+            <div class="about-section">
+                <h2>🛠 技术栈</h2>
+                <div class="about-grid">
+                    <div class="about-card">
+                        <div class="about-card-label">前端</div>
+                        <div class="about-card-value">HTML / CSS / JavaScript</div>
+                    </div>
+                    <div class="about-card">
+                        <div class="about-card-label">编辑器</div>
+                        <div class="about-card-value">VS Code</div>
+                    </div>
+                    <div class="about-card">
+                        <div class="about-card-label">设计</div>
+                        <div class="about-card-value">Figma / 极简风格</div>
+                    </div>
+                    <div class="about-card">
+                        <div class="about-card-label">部署</div>
+                        <div class="about-card-value">Cloudflare Pages</div>
+                    </div>
+                </div>
+            </div>
+            <div class="about-section">
+                <h2>📬 联系方式</h2>
+                <div class="about-grid">
+                    <div class="about-card">
+                        <div class="about-card-label">GitHub</div>
+                        <div class="about-card-value">github.com/blogger</div>
+                    </div>
+                    <div class="about-card">
+                        <div class="about-card-label">Email</div>
+                        <div class="about-card-value">hello@blog.com</div>
+                    </div>
+                </div>
+            </div>
+            <div class="about-section">
+                <h2>© 版权声明</h2>
+                <p style="color:var(--text-muted);font-size:0.87rem;line-height:1.7;">
+                    除非另有说明，本博客所有文章均采用
+                    <a href="#">CC BY-NC-SA 4.0</a> 协议授权。
+                    转载请注明出处。
+                </p>
+            </div>
+        </div>`;
+    document.getElementById('view-about').style.display = 'block';
+}
+
+// ================================================================
+// THEME TOGGLE
+// ================================================================
+function initTheme() {
+    const saved = localStorage.getItem('blog_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', saved);
+    updateThemeIcon(saved);
+}
+function toggleTheme() {
+    const cur = document.documentElement.getAttribute('data-theme');
+    const next = cur === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('blog_theme', next);
+    updateThemeIcon(next);
+    syncGiscusTheme();
+}
+function updateThemeIcon(theme) {
+    const btn = document.getElementById('themeToggle');
+    btn.innerHTML = theme === 'light' ? '🌙' : '☀️';
+    btn.title = theme === 'light' ? '切换暗色模式' : '切换明亮模式';
+    const mb = document.getElementById('mobileThemeBtn');
+    if(mb) mb.innerHTML = (theme==='light'?'🌙':'☀️') + (theme==='light'?' 切换暗色模式':' 切换明亮模式');
+}
+document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+// ================================================================
+// MOBILE MENU
+// ============================================================
+function toggleMobileMenu() { document.getElementById('mobileMenu').classList.toggle('open'); }
+function closeMobileMenu() { document.getElementById('mobileMenu').classList.remove('open'); }
+
+// ================================================================
+// UTILITIES
+// ================================================================
+function escapeHtml(str) {
+    const d=document.createElement('div'); d.textContent=str; return d.innerHTML;
+}
+function stripHtml(html) {
+    const d=document.createElement('div'); d.innerHTML=html; return d.textContent||d.innerText||'';
+}
+
+function showToast(msg,type) {
+    const t=document.getElementById('toast');
+    t.textContent=msg; t.className='toast show '+(type||'');
+    setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+let modalCallback=null;
+function showModal(title,msg,onConfirm) {
+    document.getElementById('modalTitle').textContent=title;
+    document.getElementById('modalMsg').textContent=msg;
+    modalCallback=onConfirm;
+    document.getElementById('modalOverlay').classList.add('show');
+    document.getElementById('modalConfirm').onclick=function(){if(modalCallback)modalCallback()};
+}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('show')}
+
+window.addEventListener('scroll',()=>{
+    const btt=document.getElementById('backToTop');
+    btt.classList.toggle('visible',window.scrollY>300);
+});
+function scrollToTop(){window.scrollTo({top:0,behavior:'smooth'})}
+
+window.addEventListener('scroll',()=>{
+    const winH=document.documentElement.scrollHeight-document.documentElement.clientHeight;
+    const scrolled=(window.scrollY/winH)*100;
+    document.getElementById('progressBar').style.width=scrolled+'%';
+});
+
+// ================================================================
+// INIT
+// ================================================================
+applyAdminMode();
+initTheme();
+
+// Bootstrap: load article metadata and likes, then navigate to current hash route
+loadArticlesMeta().then(() => {
+    return loadLikesRemote();
+}).then(() => {
+    const { view, data } = parseHash();
+    navigateTo(view, data);
+});
+</script>
+</body>
+</html>
