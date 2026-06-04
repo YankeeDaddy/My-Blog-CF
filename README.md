@@ -76,7 +76,7 @@ const GISCUS_CONFIG = {
 
 访问博客 URL，末尾加上 `?edit=1`：
 ```
-https://your-blog.pages.dev/?edit=1
+https://peyblog.com/?edit=1
 ```
 
 ### 2. 配置 GitHub Token
