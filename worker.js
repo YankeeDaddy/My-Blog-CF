@@ -261,8 +261,7 @@ async function handleGetDiscussions(env, corsHeaders) {
       },
     });
   } catch (error) {
-    console.error('Error fetching discussions:', error);
-    return new Response(JSON.stringify({ error: 'Failed to fetch discussions' }), {
+    return new Response(JSON.stringify({ error: 'Failed to fetch discussions', detail: error.message }), {
       status: 500,
       headers: {
         'Content-Type': 'application/json',
