@@ -135,7 +135,9 @@
         .article-card h2:hover { color: var(--primary); }
         .card-excerpt { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.65; margin-bottom: 14px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
         .card-footer { display: flex; justify-content: space-between; align-items: center; }
-        .card-comment-count { font-size: 0.82rem; color: var(--text-muted); }
+        .card-comment-count { font-size: 0.82rem; color: var(--text-muted); display: flex; align-items: center; gap: 12px; white-space: nowrap; }
+        .card-stat { display: inline-flex; align-items: center; gap: 4px; }
+        .comment-icon { color: #6b7280; font-size: 0.9em; }
 
         /* Pagination */
         .pagination { display: flex; justify-content: center; gap: 6px; margin-top: 32px; flex-wrap: wrap; }
@@ -773,29 +775,44 @@ let likesData = {};  // in-memory likes cache: { slug: count }
 let likesLoaded = false;
 let likesSyncing = false;
 
-/** Load likes from posts/likes.json via GitHub API, fallback to localStorage */
+/** Load likes from GitHub raw content (bypasses CDN cache, always fresh across devices) */
 async function loadLikesRemote() {
+    // GitHub raw content URL — always fresh, bypasses CF Pages static cache
+    const RAW_URL = `https://raw.githubusercontent.com/${MAIN_REPO}/main/${LIKES_JSON_PATH}`;
+    let loaded = false;
+
     try {
-        // Try fetching likes.json from the blog's hosted static files first
-        const resp = await fetch(LIKES_JSON_PATH + '?t=' + Date.now());
+        const resp = await fetch(RAW_URL + '?t=' + Date.now(), { cache: 'no-store' });
         if (resp.ok) {
             likesData = await resp.json();
-            likesLoaded = true;
-            // Also update localStorage cache
+            likesLoaded = loaded = true;
             localStorage.setItem(LIKE_STORAGE_KEY, JSON.stringify(likesData));
             return likesData;
         }
     } catch(e) { /* network error, fallback */ }
 
-    // Fallback to localStorage
+    // Fallback: hosted static file (may be cached)
     try {
-        const stored = localStorage.getItem(LIKE_STORAGE_KEY);
-        if (stored) {
-            likesData = JSON.parse(stored);
-            likesLoaded = true;
+        const resp = await fetch(LIKES_JSON_PATH + '?t=' + Date.now());
+        if (resp.ok) {
+            likesData = await resp.json();
+            likesLoaded = loaded = true;
+            localStorage.setItem(LIKE_STORAGE_KEY, JSON.stringify(likesData));
             return likesData;
         }
-    } catch(e) {}
+    } catch(e) { /* fallback */ }
+
+    // Fallback to localStorage
+    if (!loaded) {
+        try {
+            const stored = localStorage.getItem(LIKE_STORAGE_KEY);
+            if (stored) {
+                likesData = JSON.parse(stored);
+                likesLoaded = true;
+                return likesData;
+            }
+        } catch(e) {}
+    }
 
     // Initialize defaults
     const defaultLikes = {};
@@ -1014,11 +1031,10 @@ async function renderHome() {
     const totalLikes = getTotalLikes();
     document.getElementById('heroStats').innerHTML = `
         <div class="hero-stat"><div class="num">${articlesMeta.length}</div><div class="label">篇文章</div></div>
-        <div class="hero-stat"><div class="num" id="commentCountStat">-</div><div class="label">条评论</div></div>
+        <div class="hero-stat"><div class="num" id="commentCountStat">${totalCommentCount || '-'}</div><div class="label">条评论</div></div>
         <div class="hero-stat"><div class="num">${totalLikes}</div><div class="label">次点赞</div></div>
     `;
-    // Async fetch total comment count from Giscus Discussions repo
-    fetchCommentCount();
+    // Comment counts are pre-fetched at init via fetchArticleCommentCounts()
 
     // Filter tags
     let tagHtml = `<span class="filter-tag ${!activeCategory?'active':''}" onclick="setFilter('')">全部</span>`;
@@ -1063,23 +1079,47 @@ async function renderHome() {
     document.getElementById('view-home').style.display = 'block';
 }
 
-/** Fetch total comment count from Giscus Discussions repo (public API, no token needed) */
-function fetchCommentCount() {
-    const el = document.getElementById('commentCountStat');
-    if (!el) return;
-    if (!GISCUS_CONFIG.repo) { el.textContent = '0'; return; }
-    fetch(`https://api.github.com/repos/${GISCUS_CONFIG.repo}/discussions?per_page=100&state=all`)
-        .then(r => r.ok ? r.json() : [])
-        .then(discussions => {
-            if (!Array.isArray(discussions)) { el.textContent = '0'; return; }
-            const total = discussions.reduce((sum, d) => sum + (d.comments || 0), 0);
-            el.textContent = total;
-        })
-        .catch(() => { el.textContent = '0'; });
+/** Fetch per-article comment counts + total from Giscus Discussions repo (GitHub API, single request) */
+let articleCommentCounts = {};
+let totalCommentCount = 0;
+let commentCountsLoaded = false;
+
+async function fetchArticleCommentCounts() {
+    if (commentCountsLoaded) return articleCommentCounts;
+    try {
+        const resp = await fetch(`https://api.github.com/repos/${GISCUS_CONFIG.repo}/discussions?per_page=100&state=all`);
+        if (!resp.ok) throw new Error('API error');
+        const discussions = await resp.json();
+        if (!Array.isArray(discussions)) return {};
+        let total = 0;
+        discussions.forEach(d => {
+            // Extract slug from discussion title: "#/post/about-this-blog" → "about-this-blog"
+            const match = d.title && d.title.match(/^#\/post\/(.+)$/);
+            if (match) {
+                articleCommentCounts[match[1]] = d.comments || 0;
+                total += (d.comments || 0);
+            }
+        });
+        totalCommentCount = total;
+        // Update hero stat if visible
+        const statEl = document.getElementById('commentCountStat');
+        if (statEl) statEl.textContent = total;
+    } catch(e) {
+        console.warn('Failed to fetch article comment counts:', e);
+        const el = document.getElementById('commentCountStat');
+        if (el) el.textContent = '0';
+    }
+    commentCountsLoaded = true;
+    return articleCommentCounts;
+}
+
+function getArticleCommentCount(slug) {
+    return articleCommentCounts[slug] || 0;
 }
 
 function renderArticleCard(a) {
     const likes = getArticleLikes(a.slug);
+    const comments = getArticleCommentCount(a.slug);
     return `
     <article class="article-card" onclick="navigateTo('detail','${a.slug}')">
         <div class="card-top">
@@ -1096,7 +1136,10 @@ function renderArticleCard(a) {
         <p class="card-excerpt">${escapeHtml(a.excerpt)}</p>
         <div class="card-footer">
             ${(a.tags||[]).map(t=>`<span class="filter-tag" style="padding:2px 8px;font-size:0.74rem;" onclick="event.stopPropagation();searchByTag('${escapeHtml(t)}')">#${escapeHtml(t)}</span>`).join('')}
-            <span class="card-comment-count"><span class="heart-icon">♥</span> ${likes}</span>
+            <span class="card-comment-count">
+                <span class="card-stat"><span class="comment-icon">💬</span> ${comments}</span>
+                <span class="card-stat"><span class="heart-icon">♥</span> ${likes}</span>
+            </span>
         </div>
     </article>`;
 }
@@ -1261,6 +1304,7 @@ function observeHeadings(headings) {
 // ================================================================
 // GISCUS COMMENTS
 // ================================================================
+const MAIN_REPO = 'YankeeDaddy/My-Blog-CF';
 const GISCUS_CONFIG = {
     repo: 'YankeeDaddy/My-Blog-Comments-CF',
     repoId: 'R_kgDOSwil2A',
@@ -1932,7 +1976,7 @@ initTheme();
 
 // Bootstrap: load article metadata and likes, then navigate to current hash route
 loadArticlesMeta().then(() => {
-    return loadLikesRemote();
+    return Promise.all([loadLikesRemote(), fetchArticleCommentCounts()]);
 }).then(() => {
     const { view, data } = parseHash();
     navigateTo(view, data);
