@@ -204,55 +204,36 @@ async function handlePostLikes(request, env, corsHeaders) {
   }
 }
 
-// GET /api/discussions - Fetch comment counts from GitHub Discussions
+// GET /api/discussions - Fetch comment counts from GitHub Discussions (REST API)
 async function handleGetDiscussions(env, corsHeaders) {
   const GITHUB_PAT = env.GITHUB_PAT;
-  const categoryId = 'DIC_kwDOSwil2M4C-d5q';
-  
-  const graphqlQuery = `
-    query {
-      repository(owner: "YankeeDaddy", name: "My-Blog-Comments-CF") {
-        discussions(first: 100, categoryId: "${categoryId}") {
-          nodes {
-            title
-            comments(first: 0) {
-              totalCount
-            }
-          }
-        }
-      }
-    }
-  `;
-  
+  const repo = 'YankeeDaddy/My-Blog-Comments-CF';
+
   try {
-    const response = await fetch('https://api.github.com/graphql', {
-      method: 'POST',
+    // Use REST API to list discussions with comments_count
+    const url = `https://api.github.com/repos/${repo}/discussions?per_page=100`;
+    const response = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${GITHUB_PAT || ''}`,
-        'Content-Type': 'application/json',
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'peyblog-worker',
       },
-      body: JSON.stringify({ query: graphqlQuery }),
     });
-    
+
     if (!response.ok) {
-      throw new Error(`GitHub GraphQL error: ${response.status}`);
+      const text = await response.text();
+      throw new Error(`GitHub REST error: ${response.status} ${text}`);
     }
-    
-    const data = await response.json();
-    
-    if (data.errors) {
-      throw new Error(`GraphQL errors: ${JSON.stringify(data.errors)}`);
-    }
-    
+
+    const discussions = await response.json();
+
     // Transform to { articleId: commentCount } format
     const commentCounts = {};
-    const discussions = data.data.repository.discussions.nodes;
-    
     discussions.forEach(discussion => {
-      const articleId = discussion.title; // assuming title = articleId
-      commentCounts[articleId] = discussion.comments.totalCount;
+      // discussion.title stores the articleId (slug)
+      commentCounts[discussion.title] = discussion.comments_count || 0;
     });
-    
+
     return new Response(JSON.stringify(commentCounts), {
       headers: {
         'Content-Type': 'application/json',
@@ -261,7 +242,10 @@ async function handleGetDiscussions(env, corsHeaders) {
       },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: 'Failed to fetch discussions', detail: error.message }), {
+    return new Response(JSON.stringify({
+      error: 'Failed to fetch discussions',
+      detail: error.message
+    }), {
       status: 500,
       headers: {
         'Content-Type': 'application/json',
