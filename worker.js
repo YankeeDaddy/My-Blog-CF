@@ -32,16 +32,20 @@ export default {
 
 async function handleGetLikes(env, corsHeaders) {
   const repo = 'YankeeDaddy/My-Blog-CF';
-  const apiUrl = `https://raw.githubusercontent.com/${repo}/main/posts/likes.json?t=${Date.now()}`;
+  const apiUrl = `https://api.github.com/repos/${repo}/contents/posts/likes.json`;
   try {
-    const response = await fetch(apiUrl, { headers: { 'Cache-Control': 'no-cache' } });
+    const response = await fetch(apiUrl, {
+      headers: { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'peyblog-worker' },
+    });
     if (!response.ok) {
       if (response.status === 404) {
         return new Response(JSON.stringify({}), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...corsHeaders } });
       }
       throw new Error(`GitHub API error: ${response.status}`);
     }
-    const data = await response.json();
+    const apiData = await response.json();
+    const content = atob(apiData.content.replace(/\n/g, ''));
+    const data = JSON.parse(content);
     return new Response(JSON.stringify(data), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...corsHeaders } });
   } catch (error) {
     return new Response(JSON.stringify({ error: 'Failed to fetch likes', detail: error.message }), { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
