@@ -63,8 +63,9 @@ async function handlePostLikes(request, env, corsHeaders) {
     let currentData = {};
     let sha = null;
 
+    // GET 不需要 PAT（公开仓库），只在写入时使用 PAT
     const getResponse = await fetch(apiUrl, {
-      headers: { 'Authorization': `Bearer ${GITHUB_PAT}`, 'Accept': 'application/vnd.github.v3+json' },
+      headers: { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'peyblog-worker' },
     });
 
     if (getResponse.ok) {
