@@ -100,7 +100,7 @@ async function handlePostLikes(request, env, corsHeaders) {
 
     const putResponse = await fetch(apiUrl, {
       method: 'PUT',
-      headers: { 'Authorization': `Bearer ${GITHUB_PAT}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      headers: { 'Authorization': `Bearer ${GITHUB_PAT}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json', 'User-Agent': 'peyblog-worker' },
       body: JSON.stringify(putBody),
     });
 
