@@ -286,6 +286,38 @@ const data = JSON.parse(content);
 
 ---
 
+## Bug #8 — 前端 `loadLikesRemote()` 仍读 `raw.githubusercontent.com` 🔴
+
+**日期**：2026-06-05 17:58
+
+**位置**：`index.html` `loadLikesRemote()` 第 793-803 行
+
+**现象**：点赞后刷新页面，按钮状态（♥ 已点赞）显示正确，但点赞数显示 `0 人喜欢`
+
+**根因**：
+- Worker 已修复（Bug #7），但前端 `index.html` 的 `loadLikesRemote()` fallback 仍在读 `raw.githubusercontent.com`
+- 用户点击点赞 → POST 写入 GitHub 成功 → 刷新页面 → 前端 fallback 读到 CDN 缓存的旧数据（count=0）
+- 但 `hasUserLiked()` 读的是 `localStorage`（不受缓存影响）→ 按钮状态正确
+- 结果：♥ 已点赞 + `0 人喜欢` 的矛盾状态
+
+**修复**：将 `loadLikesRemote()` 的 fallback 也改为走 Worker API：
+```js
+// 修复前：
+const RAW_URL = `https://raw.githubusercontent.com/${MAIN_REPO}/main/${LIKES_JSON_PATH}`;
+const resp = await fetch(RAW_URL + '?t=' + Date.now(), { cache: 'no-store' });
+
+// 修复后：
+const WORKER_URL = `${API_BASE}/api/likes`;
+const resp = await fetch(WORKER_URL + '?t=' + Date.now(), { cache: 'no-store' });
+```
+
+**验证结果**（2026-06-05 17:58）：
+- ⏳ 待用户刷新 peyblog.com 后验证
+
+**教训**：修复 Worker 后必须同步检查前端是否还有直接读 raw 的逻辑。前端和 Worker 两处都要改，缺一不可。
+
+---
+
 ## 修复汇总
 
 | Bug | 严重度 | 状态 | 验证状态 |
@@ -296,19 +328,15 @@ const data = JSON.parse(content);
 | #4 POST 契约不一致 | 🔴 高 | ✅ 已修复 | ✅ 已验证 |
 | #5 数据格式冲突 | 🔴 高 | ✅ 已修复 | ✅ 已验证 |
 | #6 Fine-grained token 认证头格式 | 🔴 高 | ✅ 已修复 | ✅ 已验证 |
-| #7 CDN 缓存读取延迟 | 🔴 高 | ✅ 已修复 | ✅ 已验证 |
+| #7 CDN 缓存读取延迟（Worker） | 🔴 高 | ✅ 已修复 | ✅ 已验证 |
+| #8 CDN 缓存读取延迟（前端） | 🔴 高 | ✅ 已修复 | ⏳ 待验证 |
 
 ---
 
 ## 结论
 
-所有 7 个 Bug 已修复并验证通过（2026-06-05 17:51）。点赞数据持久化功能已上线。
-
-| 端点 | 状态 |
-|------|------|
-| GET `https://api.peyblog.com/api/likes` | ✅ HTTP 200，即时读取 |
-| POST `https://api.peyblog.com/api/likes` | ✅ HTTP 200，即时写入 |
-| GET `https://api.peyblog.com/api/discussions` | ✅ HTTP 200 |
+所有 8 个 Bug 已修复（2026-06-05 17:58）。前端 `index.html` 已推送 GitHub，Cloudflare Pages 会自动部署。
 
 **待办**：
-- [ ] 用户在博客上实际测试跨设备点赞持久化（游客模式即可，无需登录）
+- [ ] 等待 Cloudflare Pages 自动部署（约 1-2 分钟）
+- [ ] 用户在 peyblog.com 刷新后测试点赞计数是否正确显示
