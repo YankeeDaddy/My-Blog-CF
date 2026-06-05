@@ -182,6 +182,37 @@ curl https://api.peyblog.com/api/discussions
 
 ---
 
+## Bug #6 — Fine-grained Token 认证头格式错误 🔴
+
+**日期**：2026-06-05 17:08
+
+**位置**：`worker.js` `handlePostLikes()` 第 67 行、第 102 行
+
+**现象**：POST `/api/likes` 返回 `GitHub GET error: 403`，点赞数据无法写入 GitHub
+
+**根因**：GitHub Fine-grained PAT 要求使用 `Bearer` 前缀，而非 `token` 前缀：
+- Classic token：`Authorization: token ghp_xxxx`
+- **Fine-grained token：`Authorization: Bearer github_pat_xxxx`** ← 正确的
+
+Worker 代码中两处错误使用了 `token` 前缀，导致 GitHub API 拒绝请求（403 Forbidden）。此前 Bug #1-5 修复均正确，但都被此 403 掩盖。
+
+**修复**：
+```js
+// 修复前（错误，不适用于 Fine-grained token）：
+'Authorization': `token ${GITHUB_PAT}`
+
+// 修复后（正确）：
+'Authorization': `Bearer ${GITHUB_PAT}`
+```
+两处均修改（第 67 行 GET 请求、第 102 行 PUT 请求）。
+
+**验证结果**（2026-06-05 17:08）：
+- ⏳ 待验证（需用户更新 Worker 代码后 POST 测试）
+
+**教训**：创建 PAT 时是 Fine-grained 还是 Classic，决定了认证头格式。`handleGetDiscussions()` 中已经正确使用 `Bearer`，但 `handlePostLikes()` 遗留了 `token` 前缀，属于历史代码不一致。
+
+---
+
 ## 修复汇总
 
 | Bug | 严重度 | 状态 | 验证状态 |
@@ -191,6 +222,7 @@ curl https://api.peyblog.com/api/discussions
 | #3 返回格式不匹配 | 🟡 中 | ✅ 已修复 | ⏳ 待验证 |
 | #4 POST 契约不一致 | 🔴 高 | ✅ 已修复 | ⏳ 待验证 |
 | #5 数据格式冲突 | 🔴 高 | ✅ 已修复 | ⏳ 待验证 |
+| #6 Fine-grained token 认证头格式 | 🔴 高 | ✅ 已修复 | ⏳ 待验证 |
 
 ---
 

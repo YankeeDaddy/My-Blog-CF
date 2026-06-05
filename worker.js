@@ -64,7 +64,7 @@ async function handlePostLikes(request, env, corsHeaders) {
     let sha = null;
 
     const getResponse = await fetch(apiUrl, {
-      headers: { 'Authorization': `token ${GITHUB_PAT}`, 'Accept': 'application/vnd.github.v3+json' },
+      headers: { 'Authorization': `Bearer ${GITHUB_PAT}`, 'Accept': 'application/vnd.github.v3+json' },
     });
 
     if (getResponse.ok) {
@@ -99,7 +99,7 @@ async function handlePostLikes(request, env, corsHeaders) {
 
     const putResponse = await fetch(apiUrl, {
       method: 'PUT',
-      headers: { 'Authorization': `token ${GITHUB_PAT}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      headers: { 'Authorization': `Bearer ${GITHUB_PAT}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
       body: JSON.stringify(putBody),
     });
 
