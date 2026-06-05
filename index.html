@@ -791,16 +791,17 @@ async function loadLikesRemote() {
     } catch(e) { /* Functions not available yet, fallback */ }
 
     // Fallback: GitHub raw content (may have short cache)
-    const RAW_URL = `https://raw.githubusercontent.com/${MAIN_REPO}/main/${LIKES_JSON_PATH}`;
+    // 改为走 Worker API，无 CDN 缓存
+    const WORKER_URL = `${API_BASE}/api/likes`;
     try {
-        const resp = await fetch(RAW_URL + '?t=' + Date.now(), { cache: 'no-store' });
+        const resp = await fetch(WORKER_URL + '?t=' + Date.now(), { cache: 'no-store' });
         if (resp.ok) {
             likesData = await resp.json();
             likesLoaded = loaded = true;
             localStorage.setItem(LIKE_STORAGE_KEY, JSON.stringify(likesData));
             return likesData;
         }
-    } catch(e) { /* network error, fallback */ }
+    } catch(e) { /* Worker not available, fallback */ }
 
     // Fallback: hosted static file (may be cached)
     try {
