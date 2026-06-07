@@ -3,6 +3,7 @@ title: VibeCoding #1 —— 个人Blog
 date: 2026-06-07
 category: 技术
 tags:
+  - VibeCoding
   - HTMLS
   - JavaScript
 excerpt: 文科生的一次Coding实践
