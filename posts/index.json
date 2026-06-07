@@ -1,5 +1,16 @@
 [
   {
+    "slug": "vibecoding-1st-practice-blog",
+    "title": "VibeCoding #1 —— 个人Blog",
+    "date": "2026-06-07",
+    "category": "技术",
+    "tags": [
+      "HTMLS",
+      "JavaScript"
+    ],
+    "excerpt": "文科生的一次Coding实践"
+  },
+  {
     "slug": "victim-thinking",
     "title": "摆脱受害者思维",
     "date": "2026-06-04",
