@@ -1,5 +1,5 @@
 ---
-title: VibeCoding #1 —— 个人Blog
+title: VibeCoding #1：个人Blog
 date: 2026-06-07
 category: 技术
 tags:
@@ -27,7 +27,7 @@ VibeCoding，让我的coding梦想照进了现实。说几点我的感受吧。
 
 经此一战，信心倍增。下一步准备实现一个小游戏的开发。
 
-## 附：系统架构
+# 附：系统架构
 
 PeyBlog 采用「**纯静态 SPA + 无服务器云服务**」架构，由三个核心组件构成：
 
