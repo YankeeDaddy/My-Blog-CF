@@ -8,10 +8,28 @@
 
 | 仓库 | 用途 |
 |------|------|
-| `YankeeDaddy/My-Blog-CF` | **主仓库**（即本仓库）：存储 `index.html`、`posts/*.md`、配置文件等 |
+| `YankeeDaddy/My-Blog-CF` | **主仓库**（即本仓库）：存储 `index.html`、`posts/*.md`、`worker.js`、配置文件等 |
 | `YankeeDaddy/My-Blog-Comments-CF` | **评论仓库**：专供 Giscus 评论系统使用（GitHub Discussions） |
 
 > **与 Netlify 版的关系**：原来的 `YankeeDaddy/My-Blog`（Netlify）和 `YankeeDaddy/My-Blog-Comments`（Giscus）两个仓库保持不变，本项目是独立的 Cloudflare Pages 方案。
+
+---
+
+## 系统架构
+
+```
+访客浏览器
+    │
+    ├─── GET peyblog.com ──────────────► Cloudflare Pages（托管 index.html + posts/）
+    │
+    ├─── GET/POST api.peyblog.com ────► Cloudflare Worker（peyblog-likes-api）
+    │                                        │
+    │                                        ├─ GET  /api/likes       → GitHub REST API 读 posts/likes.json
+    │                                        ├─ POST /api/likes       → GitHub REST API 写 posts/likes.json
+    │                                        └─ GET  /api/discussions → GitHub REST API 读评论数
+    │
+    └─── Giscus 评论组件 ──────────────► My-Blog-Comments-CF（GitHub Discussions）
+```
 
 ---
 
@@ -34,21 +52,60 @@
 
 每次向 `main` 分支推送，Cloudflare Pages 会自动触发重新部署。
 
-### 二、配置点赞持久化（必须）
+---
 
-为了让点赞数据跨设备可见，需要配置服务端 GitHub PAT：
+## 部署点赞 API（独立 Worker）
 
-1. 访问 [GitHub Token 生成页](https://github.com/settings/tokens/new?scopes=repo&description=PeyBlog-Likes-API)，创建一个 **classic PAT**，勾选 `repo` 权限，生成并复制 Token
-2. 进入 Cloudflare Dashboard → **Workers & Pages** → `My-Blog-CF` → **Settings** → **Environment variables**
-3. 添加环境变量：
+博客的点赞/评论数通过独立的 **Cloudflare Worker**（`peyblog-likes-api`）服务，**不依赖 Pages Functions**。
 
-   | 变量名 | 值 | 加密 |
+### 一、创建 Worker
+
+1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages** → **Create application** → **Worker**
+2. 创建名为 `peyblog-likes-api` 的 Worker
+3. 将本仓库 `worker.js` 的全部内容粘贴到代码编辑器，点击 **Deploy**
+
+### 二、配置 GitHub Fine-grained PAT（必须）
+
+> ⚠️ 注意：必须使用 **Fine-grained PAT**（细粒度令牌），不支持 Classic PAT。
+
+1. 打开 https://github.com/settings/personal-access-tokens/new
+2. 填写 Token 信息：
+   - **Token name**：`peyblog-likes-api`（随便起名）
+   - **Expiration**：建议选 **No expiration**
+3. **Repository access** 选 **"Only select repositories"**，勾选两个仓库：
+   - `YankeeDaddy/My-Blog-CF`（写入 likes.json 需要）
+   - `YankeeDaddy/My-Blog-Comments-CF`（读取评论数需要）
+4. **Repository permissions** 设置：
+   - **Contents** → `Read and write`（主仓库的点赞数据读写）
+   - **Discussions** → `Read-only`（评论仓库的讨论数读取）
+5. 点击 **Generate token**，复制 Token（只显示一次）
+
+### 三、配置 Worker 环境变量
+
+1. 进入 Cloudflare Dashboard → **Workers & Pages** → `peyblog-likes-api`
+2. **Settings** → **Variables and Secrets**
+3. 添加 Secret：
+
+   | 变量名 | 值 | 类型 |
    |--------|-----|------|
-   | `GITHUB_PAT` | 粘贴你的 Token | ✅ 勾选 Encrypt |
+   | `GITHUB_PAT` | 粘贴你的 Fine-grained PAT | Secret |
 
-4. 点击 **Save**，等待重新部署完成
+4. 保存后 Worker 自动触发部署
 
-> 原理：Frontend → `POST /api/likes` → Pages Functions → 用服务端 PAT 写入 `My-Blog-CF/posts/likes.json`。访客无需配置任何内容。
+### 四、绑定自定义域名（推荐）
+
+> `*.workers.dev` 域名在中国大陆 DNS 被污染，建议绑定自定义域名。
+
+1. Worker 页面 → **Settings** → **Domains & Routes** → **Add Custom Domain**
+2. 填入 `api.peyblog.com`（或你的域名）
+3. Cloudflare 自动配置 DNS 和 SSL
+
+配置完成后，在 `index.html` 里修改：
+
+```javascript
+// 约第 1348 行
+const API_BASE = 'https://api.peyblog.com';
+```
 
 ---
 
@@ -98,9 +155,11 @@ https://peyblog.com/?edit=1
 ### 2. 配置 GitHub Token
 
 首次进入管理模式后，在侧边栏点击 **配置 Token**，填入：
-- **Personal Access Token**：需有 `repo` 权限（[点击生成](https://github.com/settings/tokens/new?scopes=repo&description=Blog+Editor)）
+- **Personal Access Token**：需有 `Contents: Read and Write` 权限（Fine-grained PAT，仅授权 `My-Blog-CF` 仓库）
 - **仓库地址**：`YankeeDaddy/My-Blog-CF`
 - **分支**：`main`
+
+> 这个 Token 仅用于浏览器内编辑器写文章，与 Worker 的 `GITHUB_PAT` 是两个独立的 Token，存在浏览器 localStorage 中。
 
 ### 3. 写文章
 
@@ -115,11 +174,14 @@ https://peyblog.com/?edit=1
 ```
 .
 ├── index.html          # 博客核心（单页应用，含 HTML/CSS/JS）
+├── worker.js           # Cloudflare Worker 源码（点赞 API + 评论数 API）
 ├── posts/
 │   ├── index.json      # 文章元数据索引
-│   ├── likes.json      # 文章点赞数据
+│   ├── likes.json      # 文章点赞数据（由 Worker 通过 GitHub API 维护）
 │   └── *.md            # 文章正文（Markdown）
+├── docs/               # 产品文档（PRD/概设/详设/管理员指南）
 ├── _headers            # Cloudflare Pages HTTP 响应头配置
+├── bugfix-log.md       # Bug 修复记录
 ├── .gitignore
 └── README.md
 ```
@@ -136,6 +198,7 @@ https://peyblog.com/?edit=1
 | 发布目录 | `.`（根目录） | 根目录（默认） |
 | 主仓库 | `My-Blog` | `My-Blog-CF` |
 | 评论仓库 | `My-Blog-Comments` | `My-Blog-Comments-CF` |
+| 点赞 API | Pages Functions（不可用） | **独立 Cloudflare Worker** |
 | 部署平台 | Netlify | Cloudflare Pages |
 
 两个方案的核心代码（`index.html`）完全相同，仅以下内容有变化：

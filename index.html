@@ -301,7 +301,7 @@
         /* Responsive */
         @media (max-width: 900px) {
             .main-layout { grid-template-columns: 1fr; }
-            .sidebar { position: static; order: -1; display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 12px; }
+            .sidebar { position: static; order: 2; display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 12px; }
             .sidebar .widget { margin-bottom: 0; }
         }
         @media (max-width: 720px) {
@@ -560,7 +560,8 @@ function generateSlug(title) {
  */
 async function loadArticlesMeta() {
     try {
-        const resp = await fetch(INDEX_JSON_PATH + '?t=' + Date.now());
+        // index.json: 使用短缓存 + stale-while-revalidate，内容变化时由部署版本触发刷新
+        const resp = await fetch(INDEX_JSON_PATH, { cache: 'default' });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         articlesMeta = await resp.json();
         // Cache to localStorage as fallback
@@ -586,7 +587,8 @@ async function loadArticlesMeta() {
 async function loadArticleBody(slug) {
     if (articleBodyCache.has(slug)) return articleBodyCache.get(slug);
     try {
-        const resp = await fetch(`${POSTS_DIR}/${slug}.md?t=` + Date.now());
+        // 文章正文使用浏览器缓存（文章内容基本不变），减少 CDN 击穿
+        const resp = await fetch(`${POSTS_DIR}/${slug}.md`, { cache: 'default' });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const rawText = await resp.text();
         // Strip YAML frontmatter if present
@@ -2016,12 +2018,27 @@ window.addEventListener('scroll',()=>{
 applyAdminMode();
 initTheme();
 
-// Bootstrap: load article metadata and likes, then navigate to current hash route
+// Bootstrap: 分两阶段初始化，优先渲染文章列表，避免 API 慢时白屏
+// 第一阶段：加载文章元数据 → 立即渲染页面（用 localStorage 缓存的点赞/评论兜底）
+// 第二阶段：异步拉取最新点赞和评论数 → 静默更新已渲染的数字，不阻塞首屏
 loadArticlesMeta().then(() => {
-    return Promise.all([loadLikesRemote(), fetchArticleCommentCounts()]);
-}).then(() => {
     const { view, data } = parseHash();
-    navigateTo(view, data);
+    navigateTo(view, data);  // ← 第一阶段：先渲染，数字用本地缓存兜底
+
+    // 第二阶段：后台静默加载最新互动数，完成后刷新显示数字
+    Promise.all([loadLikesRemote(), fetchArticleCommentCounts()]).then(() => {
+        // 如果用户还在首页，刷新文章卡片和 Hero Stats（点赞/评论数可能已更新）
+        if (currentView === 'home') renderHome();
+        // 如果用户在文章详情页，刷新点赞按钮数字
+        else if (currentView === 'detail') {
+            const slugMatch = window.location.hash.match(/#\/post\/(.+)/);
+            if (slugMatch) {
+                const slug = slugMatch[1];
+                const countEl = document.getElementById('likeCount' + slug);
+                if (countEl) countEl.textContent = getArticleLikes(slug) + ' 人喜欢';
+            }
+        }
+    }).catch(err => console.warn('Background data fetch failed:', err));
 });
 </script>
 </body>
