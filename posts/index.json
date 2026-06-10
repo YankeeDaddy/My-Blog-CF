@@ -1,5 +1,15 @@
 [
   {
+    "slug": "analysis-paralysis",
+    "title": "分析瘫痪",
+    "date": "2026-06-10",
+    "category": "技术",
+    "tags": [
+      "哲学"
+    ],
+    "excerpt": "分析太多导致事情陷入瘫痪"
+  },
+  {
     "slug": "vibecoding-1st-practice-blog",
     "title": "VibeCoding #1：个人Blog",
     "date": "2026-06-07",
