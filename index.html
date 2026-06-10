@@ -168,6 +168,9 @@
         .toc-sidebar-title { font-size: 0.88rem; font-weight: 600; margin-bottom: 12px; color: var(--text); }
         .toc-list { list-style: none; margin: 0; padding: 0; }
         .toc-item { padding: 6px 0 6px 14px; font-size: 0.82rem; color: var(--text-secondary); cursor: pointer; position: relative; transition: all var(--transition); border-left: 2px solid transparent; }
+        .toc-item.toc-h2 { font-weight: 600; color: var(--text); }
+        .toc-item.toc-h3 { padding-left: 28px; font-size: 0.78rem; }
+        .toc-item.toc-h3::before { display: none; /* only h2 gets the arrow */ }
         .toc-item::before { content:''; position:absolute; left:0; top:50%; transform:translateY(-50%); width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:5px solid var(--text-muted); transition:all var(--transition); }
         .toc-item:hover, .toc-item.active { color: var(--primary); border-left-color: var(--primary); }
         .toc-item:hover::before, .toc-item.active::before { border-top-color: var(--primary); }
@@ -318,6 +321,7 @@
             .toc-list { display: flex; flex-wrap: wrap; gap: 4px 16px; }
             .toc-item { padding: 3px 0 3px 10px; font-size: 0.8rem; border-left: none; }
             .toc-item::before { display: none; }
+            .toc-item.toc-h3 { padding-left: 20px; font-size: 0.76rem; opacity: 0.85; }
         }
         @media (max-width: 720px) {
             .nav-links { display: none; }
@@ -1312,9 +1316,10 @@ async function renderDetail(slug) {
     const tocSidebar = document.getElementById('tocSidebar');
     if (headings.length > 0) {
         tocSidebar.style.display = 'block';
-        document.getElementById('tocList').innerHTML = headings.map((h,i)=>
-            `<li class="toc-item" data-toc="${i}" onclick="scrollToHeading(${i})">${escapeHtml(h.textContent)}</li>`
-        ).join('');
+        document.getElementById('tocList').innerHTML = headings.map((h,i)=> {
+            const level = h.tagName; // 'H2' or 'H3'
+            return `<li class="toc-item toc-${level.toLowerCase()}" data-toc="${i}" data-level="${level}" onclick="scrollToHeading(${i})">${escapeHtml(h.textContent)}</li>`;
+        }).join('');
     } else {
         tocSidebar.style.display = 'none';
     }
