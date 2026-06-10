@@ -1,13 +1,5 @@
 [
   {
-    "slug": "test",
-    "title": "test",
-    "date": "2026-06-10",
-    "category": "未分类",
-    "tags": [],
-    "excerpt": "test"
-  },
-  {
     "slug": "analysis-paralysis",
     "title": "分析瘫痪",
     "date": "2026-06-10",
