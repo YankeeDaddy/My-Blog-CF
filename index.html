@@ -217,9 +217,11 @@
         .btn-secondary:hover { border-color: var(--text-muted); color: var(--text); }
 
         /* Toolbar */
-        .editor-toolbar { display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }
+        .editor-toolbar { display: flex; gap: 4px; margin-bottom: 4px; flex-wrap: wrap; align-items: center; }
         .toolbar-btn { width: 34px; height: 34px; border: 1px solid var(--border); background: var(--bg-card); border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem; color: var(--text-secondary); transition: all var(--transition); display: flex; align-items: center; justify-content: center; font-family: inherit; }
         .toolbar-btn:hover { border-color: var(--primary); color: var(--primary); background: rgba(37,99,235,0.04); }
+        .toolbar-btn-upload { width: auto; padding: 0 10px; font-size: 0.78rem; font-weight: 500; gap: 4px; border-color: rgba(37,99,235,0.3); color: var(--primary); }
+        .toolbar-btn-upload:hover { background: rgba(37,99,235,0.08); }
 
         /* Markdown Split Editor */
         .editor-split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
@@ -1548,23 +1550,26 @@ async function buildEditorUI(slug) {
             </div>
             <div class="form-group">
                 <label class="form-label">正文内容 * <span class="form-help">使用 Markdown 语法编写</span></label>
-                <div class="editor-toolbar">
-                    <button type="button" class="toolbar-btn" onclick="insertMD('**','**')" title="加粗"><b>B</b></button>
-                    <button type="button" class="toolbar-btn" onclick="insertMD('*','*')" title="斜体"><i>I</i></button>
-                    <button type="button" class="toolbar-btn" onclick="insertMD('\x60','\x60')" title="行内代码">&lt;/&gt;</button>
-                    <button type="button" class="toolbar-btn" onclick="insertMD('\n> ','')" title="引用">❝</button>
-                    <button type="button" class="toolbar-btn" onclick="insertMD('\n### ','')" title="标题">H3</button>
-                    <button type="button" class="toolbar-btn" onclick="insertMD('\n\x60\x60\x60\n','\n\x60\x60\x60\n')" title="代码块">{}</button>
-                    <button type="button" class="toolbar-btn" onclick="insertMD('\n- ','')" title="列表">≡</button>
-                    <button type="button" class="toolbar-btn" onclick="insertMD('\n---\n\n','')" title="分隔线">—</button>
-                    <button type="button" class="toolbar-btn" onclick="insertMD('[','](url)')" title="链接">🔗</button>
-                    <button type="button" class="toolbar-btn" onclick="insertMD('![alt](','url)')" title="图片">🖼</button>
+                <div class="editor-toolbar" id="editorToolbar">
+                    <button type="button" class="toolbar-btn" data-cmd="bold"    title="加粗 (Ctrl+B)"><b>B</b></button>
+                    <button type="button" class="toolbar-btn" data-cmd="italic"  title="斜体 (Ctrl+I)"><i>I</i></button>
+                    <button type="button" class="toolbar-btn" data-cmd="code"    title="行内代码">&lt;/&gt;</button>
+                    <button type="button" class="toolbar-btn" data-cmd="quote"   title="引用">❝</button>
+                    <button type="button" class="toolbar-btn" data-cmd="h3"      title="三级标题">H3</button>
+                    <button type="button" class="toolbar-btn" data-cmd="codeblock" title="代码块">{}</button>
+                    <button type="button" class="toolbar-btn" data-cmd="list"    title="无序列表">≡</button>
+                    <button type="button" class="toolbar-btn" data-cmd="hr"      title="分隔线">—</button>
+                    <button type="button" class="toolbar-btn" data-cmd="link"    title="插入链接">🔗</button>
+                    <button type="button" class="toolbar-btn toolbar-btn-img" data-cmd="img-url" title="插入图片 URL">🖼</button>
+                    <button type="button" class="toolbar-btn toolbar-btn-upload" id="imgUploadBtn" title="上传图片（支持粘贴/拖拽）">📤 上传图片</button>
+                    <input type="file" id="imgFileInput" accept="image/*" multiple style="display:none;">
                 </div>
+                <div id="imgUploadStatus" style="display:none;font-size:0.8rem;color:var(--text-muted);padding:4px 0 2px;"></div>
                 <div class="editor-split">
                     <div class="md-editor-pane">
                         <div class="preview-header">Markdown 编辑</div>
                         <textarea class="md-editor" id="ed_body"
-                                  placeholder="在此使用 Markdown 编写文章正文..."
+                                  placeholder="在此使用 Markdown 编写文章正文...&#10;&#10;💡 粘贴图片（Ctrl+V）或点击「上传图片」可直接插入图片"
                                   oninput="onEditorInput()"
                         >${bodyMd}</textarea>
                     </div>
@@ -1591,19 +1596,152 @@ async function buildEditorUI(slug) {
             </div>
         </div>`;
 
-    // Category select watcher
+    // Category select watcher + toolbar binding (must run after innerHTML is set)
     setTimeout(() => {
+        // Category watcher
         const catSel = document.getElementById('ed_category');
         if (catSel) catSel.addEventListener('change', function() {
             document.getElementById('newCatGroup').style.display =
                 this.value === '新分类' ? 'block' : 'none';
         });
+
+        // ── Toolbar: data-cmd → insertMD mapping ──────────────────────────
+        const TOOLBAR_CMDS = {
+            'bold':      ['**', '**'],
+            'italic':    ['*', '*'],
+            'code':      ['`', '`'],
+            'quote':     ['\n> ', ''],
+            'h3':        ['\n### ', ''],
+            'codeblock': ['\n```\n', '\n```\n'],
+            'list':      ['\n- ', ''],
+            'hr':        ['\n---\n\n', ''],
+            'link':      ['[', '](url)'],
+            'img-url':   ['![alt](', 'url)'],
+        };
+        document.querySelectorAll('#editorToolbar [data-cmd]').forEach(btn => {
+            const cmd = btn.getAttribute('data-cmd');
+            if (TOOLBAR_CMDS[cmd]) {
+                btn.addEventListener('click', () => insertMD(...TOOLBAR_CMDS[cmd]));
+            }
+        });
+
+        // ── Image upload: file picker ─────────────────────────────────────
+        const uploadBtn  = document.getElementById('imgUploadBtn');
+        const fileInput  = document.getElementById('imgFileInput');
+        if (uploadBtn && fileInput) {
+            uploadBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', async (e) => {
+                const files = Array.from(e.target.files);
+                if (files.length) await uploadImageFiles(files);
+                fileInput.value = '';   // reset so same file can be picked again
+            });
+        }
+
+        // ── Image upload: paste (Ctrl+V) ─────────────────────────────────
+        const ta = document.getElementById('ed_body');
+        if (ta) {
+            ta.addEventListener('paste', async (e) => {
+                const items = Array.from(e.clipboardData?.items || []);
+                const imageItems = items.filter(it => it.type.startsWith('image/'));
+                if (imageItems.length === 0) return;   // normal text paste — don't interfere
+                e.preventDefault();
+                const files = imageItems.map(it => it.getAsFile()).filter(Boolean);
+                await uploadImageFiles(files);
+            });
+        }
     }, 0);
 
     // Initial preview
     onEditorInput();
 
     document.getElementById('view-editor').style.display = 'block';
+}
+
+/**
+ * Upload image files to GitHub (images/ directory) and insert Markdown into editor.
+ * Supports multiple files (file picker) or single paste blob.
+ * Requires GitHub to be connected (PAT + repo).
+ */
+async function uploadImageFiles(files) {
+    if (!isGithubConnected()) {
+        showToast('请先配置 GitHub Token 才能上传图片', 'error');
+        return;
+    }
+    const statusEl = document.getElementById('imgUploadStatus');
+    const total = files.length;
+    let done = 0;
+
+    for (const file of files) {
+        // Show progress
+        if (statusEl) {
+            statusEl.style.display = '';
+            statusEl.textContent = `⏳ 上传中 ${done + 1}/${total}：${file.name || 'image.png'}`;
+        }
+
+        try {
+            // Build a unique filename: images/YYYYMMDD_<random>.<ext>
+            const ext = (file.name && file.name.includes('.'))
+                ? file.name.split('.').pop().toLowerCase()
+                : (file.type.split('/')[1] || 'png');
+            const datePrefix = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            const rand = Math.random().toString(36).slice(2, 7);
+            const filename = `images/${datePrefix}_${rand}.${ext}`;
+
+            // Read as base64
+            const base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]); // strip data:...;base64,
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+
+            // Check if file already exists (to get sha)
+            let sha = null;
+            try {
+                const existing = await githubAPI(`/contents/${filename}`);
+                const existingData = await existing.json();
+                sha = existingData.sha;
+            } catch(_) { /* new file — no sha needed */ }
+
+            // PUT to GitHub Contents API
+            const putBody = {
+                message: `Add image: ${filename}`,
+                content: base64,
+                branch: getGithubBranch(),
+            };
+            if (sha) putBody.sha = sha;
+
+            const putResp = await githubAPI(`/contents/${filename}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(putBody),
+            });
+            const putData = await putResp.json();
+
+            // Build public URL (Cloudflare Pages serves from repo root)
+            const repo   = getGithubRepo();                          // e.g. YankeeDaddy/My-Blog-CF
+            const branch = getGithubBranch();
+            // Use raw.githubusercontent.com or just relative path — prefer relative so it works locally too
+            const imgUrl = `https://raw.githubusercontent.com/${repo}/${branch}/${filename}`;
+
+            // Insert Markdown into editor at cursor
+            const altText = (file.name || 'image').replace(/\.[^.]+$/, '').replace(/[_-]/g, ' ');
+            insertMD(`![${altText}](`, `${imgUrl})`);
+
+            done++;
+            showToast(`图片上传成功 ✓`, 'success');
+        } catch(err) {
+            console.error('Image upload failed:', err);
+            showToast('图片上传失败: ' + err.message, 'error');
+        }
+    }
+
+    if (statusEl) {
+        statusEl.textContent = done === total
+            ? `✅ 已上传 ${done} 张图片`
+            : `⚠️ ${done}/${total} 张上传成功`;
+        setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
+    }
 }
 
 /** Insert markdown syntax at cursor position in editor */
