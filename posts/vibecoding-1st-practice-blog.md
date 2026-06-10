@@ -4,7 +4,7 @@ date: 2026-06-07
 category: 技术
 tags:
   - VibeCoding
-  - HTMLS
+  - HTML
   - JavaScript
 excerpt: 文科生的一次Coding实践
 slug: vibecoding-1st-practice-blog
@@ -12,7 +12,7 @@ slug: vibecoding-1st-practice-blog
 
 # 文科生的Coding梦
 
-作为文科生，一直有一个强烈的愿望—————能亲手开发出自己的一个软件产品。为此七年前专门系统学过python，由于能力和精力有限，最后也没能给自己一个交代。如今AI时代，在WorkBuddy的帮助下，我前后花了三天时间就完成了。PeyBlog就是我人生的第一个Coding作品。
+作为文科生，一直有一个愿望—————能亲手开发出自己的一个软件产品。为此七年前专门系统学过python，由于能力和精力有限，最后也没能给自己一个交代。如今AI时代，在WorkBuddy的帮助下，我前后花了三天时间就完成了。**PeyBlog就是我人生的第一个Coding作品**。
 
 # VibeCoding感受
 
@@ -30,53 +30,6 @@ VibeCoding，让我的coding梦想照进了现实。说几点我的感受吧。
 # 附：系统架构
 
 PeyBlog 采用「**纯静态 SPA + 无服务器云服务**」架构，由三个核心组件构成：
+![image](https://raw.githubusercontent.com/YankeeDaddy/My-Blog-CF/main/images/20260610_xa92i.png)
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                        用 户 浏 览 器                          │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │              index.html (SPA, ~2000 行)                   │ │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐  │ │
-│  │  │ 文章浏览  │ │ Markdown │ │  点赞系统 │ │  Giscus   │  │ │
-│  │  │ (读者侧)  │ │  编辑器   │ │ (持久化)  │ │  评论组件  │  │ │
-│  │  └──────────┘ └──────────┘ └──────────┘ └───────────┘  │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└──────────────┬──────────────────────┬────────────────────────┘
-               │                      │
-     ┌─────────▼─────────┐  ┌────────▼──────────┐
-     │ Cloudflare Pages  │  │ Cloudflare Worker  │
-     │ (静态托管 + CDN)   │  │  peyblog-likes-api │
-     │                   │  │  api.peyblog.com   │
-     │ • index.html      │  │                    │
-     │ • posts/*.md      │  │ GET  /api/likes    │
-     │ • posts/index.json│  │ POST /api/likes    │
-     │ • posts/likes.json│  │ GET  /api/discuss..│
-     │ • _headers        │  │                    │
-     └────────┬──────────┘  └────────┬──────────┘
-              │                      │
-              │        ┌─────────────┴─────────────┐
-              │        │       GitHub API           │
-              └────────┤  ┌──────────┐ ┌─────────┐ │
-                       │  │ REST API │ │  GraphQL │ │
-                       │  └────┬─────┘ └────┬────┘ │
-                       └───────┼────────────┼──────┘
-                               │            │
-                    ┌──────────▼──┐  ┌──────▼──────────┐
-                    │ My-Blog-CF  │  │My-Blog-Comments-CF│
-                    │  (主仓库)    │  │   (评论仓库)      │
-                    │             │  │                  │
-                    │ posts/*.md  │  │ Discussions      │
-                    │ likes.json  │  │ (Giscus 使用)    │
-                    │ index.json  │  │                  │
-                    └─────────────┘  └──────────────────┘
-```
-
-### 组件职责
-
-| 组件                      | 职责                                      | 关键技术                             |
-| :------------------------ | :---------------------------------------- | :----------------------------------- |
-| **SPA 前端** (index.html) | 路由、渲染、编辑器、点赞交互、Giscus 集成 | Vanilla JS + Marked.js               |
-| **Cloudflare Pages**      | 静态文件托管、全球 CDN 分发、自动部署     | Cloudflare CDN                       |
-| **Cloudflare Worker**     | 点赞数据读写 API、评论数聚合 API          | Cloudflare Workers + GitHub REST API |
-| **GitHub 主仓库**         | 文章源文件存储、版本控制、点赞数据持久化  | Git + GitHub REST API                |
-| **GitHub 评论仓库**       | Giscus 评论数据（Discussions）            | GitHub Discussions + Giscus App      |
+![image](https://raw.githubusercontent.com/YankeeDaddy/My-Blog-CF/main/images/20260610_kg9cg.png)
