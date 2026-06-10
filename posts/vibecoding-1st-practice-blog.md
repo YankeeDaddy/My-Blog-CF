@@ -10,11 +10,12 @@ excerpt: 文科生的一次Coding实践
 slug: vibecoding-1st-practice-blog
 ---
 
-# 文科生的Coding梦
+# Coding梦
 
-作为文科生，一直有一个愿望—————能亲手开发出自己的一个软件产品。为此七年前专门系统学过python，由于能力和精力有限，最后也没能给自己一个交代。如今AI时代，在WorkBuddy的帮助下，我前后花了三天时间就完成了。**PeyBlog就是我人生的第一个Coding作品**。
+作为文科生，一直有一个愿望—————能亲手开发出自己的一个软件产品。为此七年前专门系统学过python，由于能力和精力有限，最后也没能给自己一个交代。如今AI时代，在WorkBuddy的帮助下，我前后花了三天时间就完成了。
+> **PeyBlog就是我人生的第一个Coding作品**。
 
-# VibeCoding感受
+# Coding感想
 
 VibeCoding，让我的coding梦想照进了现实。说几点我的感受吧。
 
