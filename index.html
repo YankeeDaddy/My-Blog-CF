@@ -208,6 +208,26 @@
         .heart-icon { color: #fa5151; font-size: 1em; }
         .heart-icon-empty { color: #9ca3af; font-size: 1em; }
 
+        /* Share Button */
+        .share-btn { padding: 10px 22px; border: 1.5px solid var(--border); border-radius: 50px; background: var(--bg-card); cursor: pointer; font-size: 0.92rem; color: var(--text-secondary); transition: all var(--transition); font-family: inherit; display: flex; align-items: center; gap: 6px; }
+        .share-btn:hover { border-color: #07c160; color: #07c160; background: rgba(7,193,96,0.04); }
+        /* Share Modal */
+        .share-modal-box { background: var(--bg-card); padding: 32px 28px 24px; border-radius: var(--radius); max-width: 420px; width: 92%; text-align: center; box-shadow: var(--shadow-lg); position: relative; }
+        .share-modal-close { position: absolute; top: 12px; right: 14px; width: 32px; height: 32px; border: none; background: none; font-size: 1.1rem; color: var(--text-muted); cursor: pointer; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .share-modal-close:hover { background: var(--bg-secondary); color: var(--text); }
+        .share-modal-title { font-size: 1.05rem; margin-bottom: 6px; }
+        .share-modal-hint { font-size: 0.84rem; color: var(--text-muted); margin-bottom: 18px; max-width: 300px; margin-left: auto; margin-right: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .share-qr-wrapper { width: 200px; height: 200px; margin: 0 auto 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; background: #fff; position: relative; }
+        .share-qr-img { width: 100%; height: 100%; object-fit: contain; }
+        .share-qr-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: var(--text-muted); background: #fff; }
+        .share-hint-text { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 16px; }
+        .share-divider { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; color: var(--text-muted); font-size: 0.78rem; }
+        .share-divider::before, .share-divider::after { content:''; flex:1; height:1px; background:var(--border); }
+        .share-copy-row { display: flex; gap: 8px; }
+        .share-link-input { flex:1; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-secondary); font-size: 0.82rem; color: var(--text-secondary); font-family: monospace; text-overflow: ellipsis; }
+        .btn-sm { padding: 8px 14px; font-size: 0.84rem; }
+        [data-theme="dark"] .share-qr-wrapper { background: #fff; }
+
         /* Editor Page */
         .editor-form { max-width: 800px; margin: 0 auto; }
         .form-group { margin-bottom: 20px; }
@@ -459,6 +479,25 @@
         <div class="modal-actions">
             <button class="btn-secondary" onclick="closeModal()">取消</button>
             <button class="btn-primary" id="modalConfirm">确定</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== SHARE MODAL ===== -->
+<div class="modal-overlay" id="shareModalOverlay" onclick="if(event.target===this)closeShareModal()">
+    <div class="share-modal-box">
+        <button class="share-modal-close" onclick="closeShareModal()" title="关闭">✕</button>
+        <h3 class="share-modal-title">📤 转发给微信好友</h3>
+        <p class="share-modal-hint" id="shareArticleTitle"></p>
+        <div class="share-qr-wrapper">
+            <img id="shareQrImg" src="" alt="微信扫码阅读" class="share-qr-img">
+            <div class="share-qr-loading" id="shareQrLoading">生成二维码中...</div>
+        </div>
+        <p class="share-hint-text">打开微信「扫一扫」扫描二维码</p>
+        <div class="share-divider"><span>或在电脑上</span></div>
+        <div class="share-copy-row">
+            <input type="text" class="share-link-input" id="shareLinkInput" readonly onclick="this.select()">
+            <button class="btn-primary btn-sm" id="shareCopyBtn" onclick="copyShareLink()">📋 复制链接</button>
         </div>
     </div>
 </div>
@@ -1308,6 +1347,7 @@ async function renderDetail(slug) {
                 ${isLiked ? '<span class="heart-icon">♥</span>' : '<span class="heart-icon-empty">♡</span>'} 喜欢这篇文章
             </button>
             <span class="like-count" id="likeCount${slug}">${likes} 人喜欢</span>
+            <button class="share-btn" data-title="${escapeHtml(article.title)}" onclick="showShareModal('${slug}',this.dataset.title)" title="转发给微信好友">📤 转发</button>
         </div>
         ${renderGiscusSection(slug)}
     `;
@@ -2163,6 +2203,46 @@ function showModal(title,msg,onConfirm) {
     document.getElementById('modalConfirm').onclick=function(){if(modalCallback)modalCallback()};
 }
 function closeModal(){document.getElementById('modalOverlay').classList.remove('show')}
+
+// ── Share Modal ────────────────────────────────────────────────────
+function showShareModal(slug, title) {
+    const articleUrl = window.location.origin + '/?p=' + encodeURIComponent(slug);
+    const shareUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(articleUrl);
+
+    document.getElementById('shareArticleTitle').textContent = title;
+    document.getElementById('shareLinkInput').value = articleUrl;
+    document.getElementById('shareQrLoading').style.display = 'flex';
+
+    const qrImg = document.getElementById('shareQrImg');
+    qrImg.src = shareUrl;
+    qrImg.onload = function() {
+        document.getElementById('shareQrLoading').style.display = 'none';
+    };
+    qrImg.onerror = function() {
+        document.getElementById('shareQrLoading').textContent = '二维码加载失败';
+    };
+
+    document.getElementById('shareModalOverlay').classList.add('show');
+    document.getElementById('shareCopyBtn').textContent = '📋 复制链接';
+}
+
+function closeShareModal() {
+    document.getElementById('shareModalOverlay').classList.remove('show');
+}
+
+function copyShareLink() {
+    const input = document.getElementById('shareLinkInput');
+    input.select();
+    navigator.clipboard.writeText(input.value).then(() => {
+        document.getElementById('shareCopyBtn').textContent = '✅ 已复制';
+        showToast('链接已复制，可粘贴到微信发送好友', 'success');
+        setTimeout(() => {
+            document.getElementById('shareCopyBtn').textContent = '📋 复制链接';
+        }, 2000);
+    }).catch(() => {
+        showToast('复制失败，请手动选择链接', 'error');
+    });
+}
 
 window.addEventListener('scroll',()=>{
     const btt=document.getElementById('backToTop');
